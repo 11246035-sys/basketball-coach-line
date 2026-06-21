@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>預約管理</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+</head>
+<body>
+  <nav class="admin-nav">
+    <div class="nav-brand">🏀 籃球家教後台</div>
+    <button class="nav-logout" id="logoutBtn">登出</button>
+  </nav>
+
+  <div class="admin-tabs">
+    <a href="dashboard.html" class="tab">📊 總覽</a>
+    <a href="bookings.html" class="tab active">📅 預約管理</a>
+    <a href="records.html" class="tab">📸 課程紀錄</a>
+    <a href="students.html" class="tab">👥 學生管理</a>
+  </div>
+
+  <div class="admin-container">
+    <div class="filter-bar">
+      <select id="statusFilter" onchange="loadBookings()">
+        <option value="">全部狀態</option>
+        <option value="pending">⏳ 待確認</option>
+        <option value="confirmed">✅ 已確認</option>
+        <option value="rejected">❌ 已拒絕</option>
+        <option value="cancelled">🚫 已取消</option>
+      </select>
+      <input type="date" id="dateFilter" onchange="loadBookings()" placeholder="篩選日期">
+    </div>
+
+    <div id="bookingsList">載入中...</div>
+  </div>
+
+  <script src="/assets/js/admin-common.js"></script>
+  <script>
+    const SESSION_MAP = { morning: '早上 09:00-12:00', afternoon: '下午 13:00-17:00', evening: '晚上 18:00-21:00' };
+    const STATUS_MAP = {
+      pending: '<span class="badge badge-pending">⏳ 待確認</span>',
+      confirmed: '<span class="badge badge-confirmed">✅ 已確認</span>',
+      rejected: '<span class="badge badge-rejected">❌ 已拒絕</span>',
+      cancelled: '<span class="badge badge-cancelled">🚫 已取消</span>'
+    };
+
+    requireLogin(loadBookings);
+
+    async function loadBookings() {
+      const status = document.getElementById('statusFilter').value;
+      const date = document.getElementById('dateFilter').value;
+      const params = new URLSearchParams();
+      if (status) params.set('status', status);
+      if (date) params.set('date', date);
+
+      document.getElementById('bookingsList').innerHTML = '<div class="loading">載入中...</div>';
+
+      try {
+        const res = await fetch(`/api/bookings?${params}`);
+        const data = await res.json();
+        const bookings = data.bookings || [];
+
+        if (bookings.length === 0) {
+          document.getElementById('bookingsList').innerHTML =
+            '<div class="empty"><div class="empty-icon">📅</div><p>沒有符合條件的預約</p></div>';
+          return;
+        }
+
+        document.getElementById('bookingsList').innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>學生姓名</th>
+                <th>日期</th>
+                <th>時段</th>
+                <th>備註</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bookings.map(b => `
+                <tr>
+                  <td><strong>${b.student_name}</strong></td>
+                  <td>${b.date}</td>
+                  <td>${SESSION_MAP[b.session] || b.session}</td>
+                  <td style="max-width:150px;word-break:break-all">${b.notes || '-'}</td>
+                  <td>${STATUS_MAP[b.status] || b.status}</td>
+                  <td>
+                    ${b.status === 'pending' ? `
+                      <button class="btn-sm btn-success" onclick="updateStatus('${b.id}','confirmed')">接受</button>
+                      <button class="btn-sm btn-danger" onclick="updateStatus('${b.id}','rejected')">拒絕</button>
+                    ` : '-'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        document.getElementById('bookingsList').innerHTML = '<div class="alert alert-error">載入失敗</div>';
+      }
+    }
+
+    async function updateStatus(id, status) {
+      if (!confirm(status === 'confirmed' ? '確認接受此預約？\n將發送 LINE 通知給家長。' : '確認拒絕此預約？\n將發送 LINE 通知給家長。')) return;
+      try {
+        const res = await fetch(`/api/bookings/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+          showToast('更新成功，LINE 通知已發送');
+          loadBookings();
+        } else {
+          showToast('更新失敗', 'error');
+        }
+      } catch { showToast('操作失敗', 'error'); }
+    }
+  </script>
+</body>
+</html>

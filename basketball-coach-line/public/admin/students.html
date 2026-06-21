@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學生管理</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+  <style>
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 440px;
+    }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="admin-nav">
+    <div class="nav-brand">🏀 籃球家教後台</div>
+    <button class="nav-logout" id="logoutBtn">登出</button>
+  </nav>
+
+  <div class="admin-tabs">
+    <a href="dashboard.html" class="tab">📊 總覽</a>
+    <a href="bookings.html" class="tab">📅 預約管理</a>
+    <a href="records.html" class="tab">📸 課程紀錄</a>
+    <a href="students.html" class="tab active">👥 學生管理</a>
+  </div>
+
+  <div class="admin-container">
+    <button class="btn btn-primary" onclick="openModal()" style="margin-bottom:16px;width:auto">
+      + 新增學生
+    </button>
+    <div id="studentsList">載入中...</div>
+  </div>
+
+  <!-- 新增/編輯 Modal -->
+  <div class="modal-overlay" id="studentModal">
+    <div class="modal">
+      <div class="modal-title" id="modalTitle">新增學生</div>
+      <form id="studentForm">
+        <input type="hidden" id="editId">
+        <div class="form-group">
+          <label>學生姓名 *</label>
+          <input type="text" id="sName" required maxlength="50" placeholder="請輸入學生姓名">
+        </div>
+        <div class="form-group">
+          <label>LINE 用戶 ID（發送通知用）</label>
+          <input type="text" id="sLineId" placeholder="Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" maxlength="50">
+        </div>
+        <div class="form-group">
+          <label>家長姓名</label>
+          <input type="text" id="sParent" maxlength="50" placeholder="家長稱呼">
+        </div>
+        <div class="form-group">
+          <label>聯絡電話</label>
+          <input type="tel" id="sPhone" maxlength="20" placeholder="0912-345-678">
+        </div>
+        <div class="form-group">
+          <label>備註</label>
+          <textarea id="sNotes" maxlength="300" placeholder="特殊需求、健康狀況等"></textarea>
+        </div>
+        <div id="studentAlert"></div>
+        <div style="display:flex;gap:8px">
+          <button type="button" class="btn btn-outline" onclick="closeModal()" style="flex:1">取消</button>
+          <button type="submit" class="btn btn-primary" style="flex:1" id="saveBtn">儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/assets/js/admin-common.js"></script>
+  <script>
+    requireLogin(loadStudents);
+
+    async function loadStudents() {
+      try {
+        const res = await fetch('/api/students');
+        const data = await res.json();
+        const students = data.students || [];
+
+        if (students.length === 0) {
+          document.getElementById('studentsList').innerHTML =
+            '<div class="empty"><div class="empty-icon">👥</div><p>尚未新增任何學生</p></div>';
+          return;
+        }
+
+        document.getElementById('studentsList').innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr><th>姓名</th><th>家長</th><th>電話</th><th>LINE ID</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              ${students.map(s => `
+                <tr>
+                  <td><strong>${s.name}</strong></td>
+                  <td>${s.parent_name || '-'}</td>
+                  <td>${s.phone || '-'}</td>
+                  <td style="font-size:11px;word-break:break-all">${s.line_user_id ? s.line_user_id.substring(0,12)+'...' : '-'}</td>
+                  <td>
+                    <button class="btn-sm btn-outline" onclick='editStudent(${JSON.stringify(s)})'>編輯</button>
+                    <button class="btn-sm btn-danger" onclick="deleteStudent('${s.id}')">刪除</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch {
+        document.getElementById('studentsList').innerHTML = '<div class="alert alert-error">載入失敗</div>';
+      }
+    }
+
+    function openModal(student = null) {
+      document.getElementById('studentModal').classList.add('active');
+      document.getElementById('modalTitle').textContent = student ? '編輯學生' : '新增學生';
+      document.getElementById('editId').value = student?.id || '';
+      document.getElementById('sName').value = student?.name || '';
+      document.getElementById('sLineId').value = student?.line_user_id || '';
+      document.getElementById('sParent').value = student?.parent_name || '';
+      document.getElementById('sPhone').value = student?.phone || '';
+      document.getElementById('sNotes').value = student?.notes || '';
+    }
+
+    function editStudent(student) { openModal(student); }
+
+    function closeModal() {
+      document.getElementById('studentModal').classList.remove('active');
+      document.getElementById('studentForm').reset();
+      document.getElementById('studentAlert').innerHTML = '';
+    }
+
+    document.getElementById('studentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('editId').value;
+      const payload = {
+        name: document.getElementById('sName').value.trim(),
+        line_user_id: document.getElementById('sLineId').value.trim() || null,
+        parent_name: document.getElementById('sParent').value.trim() || null,
+        phone: document.getElementById('sPhone').value.trim() || null,
+        notes: document.getElementById('sNotes').value.trim() || null
+      };
+
+      const btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(id ? `/api/students/${id}` : '/api/students', {
+          method: id ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(id ? '已更新' : '已新增');
+          closeModal();
+          loadStudents();
+        } else {
+          document.getElementById('studentAlert').innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+        }
+      } catch {
+        document.getElementById('studentAlert').innerHTML = '<div class="alert alert-error">操作失敗</div>';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function deleteStudent(id) {
+      if (!confirm('確認刪除此學生？此操作無法復原。')) return;
+      try {
+        const res = await fetch(`/api/students/${id}`, { method: 'DELETE' });
+        if (res.ok) { showToast('已刪除'); loadStudents(); }
+        else showToast('刪除失敗', 'error');
+      } catch { showToast('操作失敗', 'error'); }
+    }
+  </script>
+</body>
+</html>

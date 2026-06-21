@@ -1,0 +1,50 @@
+{
+  "size": {
+    "width": 2500,
+    "height": 843
+  },
+  "selected": true,
+  "name": "籃球家教選單",
+  "chatBarText": "📋 選單",
+  "areas": [
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "預約課程",
+        "uri": "https://liff.line.me/__LIFF_ID_BOOKING__"
+      }
+    },
+    {
+      "bounds": {
+        "x": 833,
+        "y": 0,
+        "width": 834,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "上課須知",
+        "uri": "https://liff.line.me/__LIFF_ID_NOTICE__"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1667,
+        "y": 0,
+        "width": 833,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "課程紀錄",
+        "uri": "https://liff.line.me/__LIFF_ID_RECORDS__"
+      }
+    }
+  ]
+}

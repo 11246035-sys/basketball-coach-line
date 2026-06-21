@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>預約課程</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <script src="/config.js"></script>
+  <!-- LINE LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+  <style>
+    .session-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .session-option {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 8px;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .session-option input[type="radio"] { display: none; }
+    .session-option.selected {
+      border-color: var(--orange);
+      background: #fff7ed;
+    }
+    .session-option .icon { font-size: 24px; margin-bottom: 4px; }
+    .session-option .label { font-size: 13px; font-weight: 600; }
+    .session-option .time { font-size: 11px; color: var(--gray-600); }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>📅 預約課程</h1>
+  </header>
+
+  <div class="container">
+    <div id="loading" class="loading">初始化中...</div>
+    <div id="main" style="display:none">
+      <div class="card">
+        <form id="bookingForm">
+          <div class="form-group">
+            <label>學生姓名 *</label>
+            <input type="text" id="studentName" placeholder="請輸入學生姓名" required maxlength="50">
+          </div>
+
+          <div class="form-group">
+            <label>上課日期 *</label>
+            <input type="date" id="date" required>
+          </div>
+
+          <div class="form-group">
+            <label>上課時段 *</label>
+            <div class="session-grid">
+              <label class="session-option" id="opt-morning">
+                <input type="radio" name="session" value="morning">
+                <span class="icon">🌅</span>
+                <span class="label">早上</span>
+                <span class="time">09:00-12:00</span>
+              </label>
+              <label class="session-option" id="opt-afternoon">
+                <input type="radio" name="session" value="afternoon">
+                <span class="icon">☀️</span>
+                <span class="label">下午</span>
+                <span class="time">13:00-17:00</span>
+              </label>
+              <label class="session-option" id="opt-evening">
+                <input type="radio" name="session" value="evening">
+                <span class="icon">🌙</span>
+                <span class="label">晚上</span>
+                <span class="time">18:00-21:00</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>備註（選填）</label>
+            <textarea id="notes" placeholder="例如：需要加強三分球投籃、第一次上課等" maxlength="200"></textarea>
+          </div>
+
+          <div id="alertBox"></div>
+
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            📅 送出預約
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let lineUserId = null;
+
+    // 設定日期最小值為今天
+    document.getElementById('date').min = new Date().toISOString().split('T')[0];
+    // 預設選擇三天後
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 3);
+    document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
+
+    // 時段選項點擊效果
+    document.querySelectorAll('.session-option').forEach(el => {
+      el.addEventListener('click', () => {
+        document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
+        el.classList.add('selected');
+      });
+    });
+
+    async function init() {
+      try {
+        const liffId = window.APP_CONFIG?.liffIdBooking || '__LIFF_ID_BOOKING__';
+        await liff.init({ liffId });
+
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        lineUserId = profile.userId;
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+      } catch (err) {
+        console.error('LIFF 初始化失敗:', err);
+        document.getElementById('loading').innerHTML = '❌ 初始化失敗，請關閉後重新開啟';
+      }
+    }
+
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const studentName = document.getElementById('studentName').value.trim();
+      const date = document.getElementById('date').value;
+      const session = document.querySelector('input[name="session"]:checked')?.value;
+      const notes = document.getElementById('notes').value.trim();
+
+      if (!studentName || !date || !session) {
+        showAlert('error', '請填寫學生姓名、日期，並選擇時段');
+        return;
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '送出中...';
+
+      try {
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ line_user_id: lineUserId, student_name: studentName, date, session, notes })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          showAlert('success', '✅ 預約成功！教練確認後會透過 LINE 通知您。');
+          document.getElementById('bookingForm').reset();
+          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
+          document.getElementById('date').value = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
+          setTimeout(() => liff.closeWindow(), 3000);
+        } else {
+          showAlert('error', data.error || '預約失敗，請稍後再試');
+        }
+      } catch (err) {
+        showAlert('error', '網路錯誤，請稍後再試');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📅 送出預約';
+      }
+    });
+
+    function showAlert(type, msg) {
+      const box = document.getElementById('alertBox');
+      box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      box.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上課須知</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <style>
+    .notice-section {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .notice-section h2 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .notice-section ul {
+      list-style: none;
+      padding: 0;
+    }
+    .notice-section li {
+      padding: 8px 0;
+      font-size: 14px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      gap: 8px;
+    }
+    .notice-section li:last-child { border-bottom: none; }
+    .notice-section li .bullet { flex-shrink: 0; }
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-100);
+      font-size: 14px;
+    }
+    .price-row:last-child { border-bottom: none; }
+    .price-row .price { font-weight: 700; color: var(--orange); }
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      font-size: 14px;
+    }
+    .time-badge {
+      background: var(--orange);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>📋 上課須知</h1>
+  </header>
+
+  <div class="container">
+
+    <div class="notice-section">
+      <h2>📍 上課地點</h2>
+      <ul>
+        <li>
+          <span class="bullet">🏀</span>
+          <span>上課場地依預約時段確認，詳細地址請在確認預約後詢問教練</span>
+        </li>
+        <li>
+          <span class="bullet">🚌</span>
+          <span>場地附近有公車站，交通便利</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="notice-section">
+      <h2>⏰ 上課時段</h2>
+      <div class="time-row">
+        <span class="time-badge">早上</span>
+        <span>09:00 - 12:00（共 3 小時）</span>
+      </div>
+      <div class="time-row">
+        <span class="time-badge">下午</span>
+        <span>13:00 - 17:00（共 4 小時）</span>
+      </div>
+      <div class="time-row">
+        <span class="time-badge">晚上</span>
+        <span>18:00 - 21:00（共 3 小時）</span>
+      </div>
+    </div>
+
+    <div class="notice-section">
+      <h2>💰 課程費用</h2>
+      <div class="price-row">
+        <span>單堂體驗課</span>
+        <span class="price">請詢問教練</span>
+      </div>
+      <div class="price-row">
+        <span>月費方案（4 堂）</span>
+        <span class="price">請詢問教練</span>
+      </div>
+      <div class="price-row">
+        <span>月費方案（8 堂）</span>
+        <span class="price">請詢問教練</span>
+      </div>
+    </div>
+
+    <div class="notice-section">
+      <h2>📝 注意事項</h2>
+      <ul>
+        <li><span class="bullet">1️⃣</span><span>請提前 <strong>10 分鐘</strong> 到達場地</span></li>
+        <li><span class="bullet">2️⃣</span><span>穿著<strong>舒適運動服裝</strong>及<strong>球鞋</strong>（禁止穿拖鞋上課）</span></li>
+        <li><span class="bullet">3️⃣</span><span>自備飲水，保持充足水分補給</span></li>
+        <li><span class="bullet">4️⃣</span><span>請<strong>勿空腹</strong>上課，課前 1 小時可適量進食</span></li>
+        <li><span class="bullet">5️⃣</span><span>如需取消課程，請提前 <strong>24 小時</strong> 透過 LINE 告知</span></li>
+        <li><span class="bullet">6️⃣</span><span>課程中如身體<strong>不適</strong>，請立即告知教練</span></li>
+        <li><span class="bullet">7️⃣</span><span>未滿 12 歲學員須由家長陪同</span></li>
+      </ul>
+    </div>
+
+    <div class="notice-section">
+      <h2>❓ 常見問題</h2>
+      <ul>
+        <li>
+          <span class="bullet">Q</span>
+          <span><strong>需要自備球嗎？</strong><br>教練會準備訓練用球，學員可自備個人球</span>
+        </li>
+        <li>
+          <span class="bullet">Q</span>
+          <span><strong>適合幾歲的學員？</strong><br>小學生至成人皆可，課程內容因年齡調整</span>
+        </li>
+        <li>
+          <span class="bullet">Q</span>
+          <span><strong>下雨天怎麼辦？</strong><br>視場地情況決定，若需取消會提前 LINE 通知</span>
+        </li>
+      </ul>
+    </div>
+
+    <div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px">
+      如有其他問題，歡迎直接在 LINE 留言詢問 🏀
+    </div>
+  </div>
+</body>
+</html>

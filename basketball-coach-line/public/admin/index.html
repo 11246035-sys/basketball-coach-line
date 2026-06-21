@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教練後台 - 登入</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px 32px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    }
+    .login-logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-logo .icon { font-size: 56px; }
+    .login-logo h1 { font-size: 22px; font-weight: 700; margin-top: 8px; color: var(--gray-800); }
+    .login-logo p { font-size: 14px; color: var(--gray-600); margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">🏀</div>
+      <h1>籃球家教後台</h1>
+      <p>教練管理系統</p>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>管理員密碼</label>
+        <input type="password" id="password" placeholder="請輸入密碼" required autofocus>
+      </div>
+
+      <div id="alertBox"></div>
+
+      <button type="submit" class="btn btn-primary" id="loginBtn">
+        🔐 登入後台
+      </button>
+    </form>
+  </div>
+
+  <script>
+    // 如果已登入，直接跳轉
+    fetch('/api/admin/check').then(r => r.json()).then(data => {
+      if (data.isAdmin) location.href = '/admin/dashboard.html';
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = '登入中...';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          location.href = '/admin/dashboard.html';
+        } else {
+          document.getElementById('alertBox').innerHTML =
+            `<div class="alert alert-error">${data.error}</div>`;
+          btn.disabled = false;
+          btn.textContent = '🔐 登入後台';
+        }
+      } catch {
+        document.getElementById('alertBox').innerHTML =
+          '<div class="alert alert-error">網路錯誤，請稍後再試</div>';
+        btn.disabled = false;
+        btn.textContent = '🔐 登入後台';
+      }
+    });
+  </script>
+</body>
+</html>
