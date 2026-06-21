@@ -11,6 +11,7 @@ const studentsRouter = require('./src/routes/students');
 const adminRouter = require('./src/routes/admin');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // CORS 設定（允許 LIFF 頁面跨域請求）
@@ -27,6 +28,7 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24小時
   }
 }));
