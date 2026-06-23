@@ -53,10 +53,15 @@
   </div>
 
   <script>
-    // 如果已登入，直接跳轉
-    fetch('/api/admin/check').then(r => r.json()).then(data => {
-      if (data.isAdmin) location.href = '/admin/dashboard.html';
-    });
+    // 如果已有 token，直接跳轉
+    const existingToken = localStorage.getItem('admin_token');
+    if (existingToken) {
+      fetch('/api/admin/check', {
+        headers: { 'Authorization': `Bearer ${existingToken}` }
+      }).then(r => r.json()).then(data => {
+        if (data.isAdmin) location.href = '/admin/dashboard.html';
+      });
+    }
 
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -73,11 +78,12 @@
         });
         const data = await res.json();
 
-        if (res.ok) {
+        if (res.ok && data.token) {
+          localStorage.setItem('admin_token', data.token);
           location.href = '/admin/dashboard.html';
         } else {
           document.getElementById('alertBox').innerHTML =
-            `<div class="alert alert-error">${data.error}</div>`;
+            `<div class="alert alert-error">${data.error || '登入失敗'}</div>`;
           btn.disabled = false;
           btn.textContent = '🔐 登入後台';
         }
