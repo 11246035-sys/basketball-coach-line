@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教練後台 - 總覽</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+</head>
+<body>
+  <div id="app">
+    <nav class="admin-nav">
+      <div class="nav-brand">🏀 籃球家教後台</div>
+      <button class="nav-logout" id="logoutBtn">登出</button>
+    </nav>
+
+    <div class="admin-tabs">
+      <a href="dashboard.html" class="tab active">📊 總覽</a>
+      <a href="bookings.html" class="tab">📅 預約管理</a>
+      <a href="records.html" class="tab">📸 課程紀錄</a>
+      <a href="students.html" class="tab">👥 學生管理</a>
+    </div>
+
+    <div class="admin-container">
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card loading">載入中...</div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">⏳ 待確認預約</h2>
+        <div id="pendingBookings">載入中...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/admin-common.js"></script>
+  <script>
+    requireLogin(async () => {
+      await loadStats();
+      await loadPendingBookings();
+    });
+
+    async function loadStats() {
+      try {
+        const [bookingsRes, studentsRes, recordsRes] = await Promise.all([
+          fetch('/api/bookings'),
+          fetch('/api/students'),
+          fetch('/api/records')
+        ]);
+        const bookings = (await bookingsRes.json()).bookings || [];
+        const students = (await studentsRes.json()).students || [];
+        const records = (await recordsRes.json()).records || [];
+
+        const pending = bookings.filter(b => b.status === 'pending').length;
+        const confirmed = bookings.filter(b => b.status === 'confirmed').length;
+
+        document.getElementById('statsGrid').innerHTML = `
+          <div class="stat-card">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value">${pending}</div>
+            <div class="stat-label">待確認預約</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value">${confirmed}</div>
+            <div class="stat-label">已確認課程</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value">${students.length}</div>
+            <div class="stat-label">學生人數</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📸</div>
+            <div class="stat-value">${records.length}</div>
+            <div class="stat-label">課程紀錄</div>
+          </div>
+        `;
+      } catch (err) {
+        document.getElementById('statsGrid').innerHTML = '<div class="stat-card">載入失敗</div>';
+      }
+    }
+
+    async function loadPendingBookings() {
+      try {
+        const res = await fetch('/api/bookings?status=pending');
+        const data = await res.json();
+        const bookings = data.bookings || [];
+
+        if (bookings.length === 0) {
+          document.getElementById('pendingBookings').innerHTML =
+            '<div class="empty"><div class="empty-icon">✅</div><p>目前沒有待確認預約</p></div>';
+          return;
+        }
+
+        const sessionMap = { morning: '早上', afternoon: '下午', evening: '晚上' };
+        document.getElementById('pendingBookings').innerHTML = bookings.map(b => `
+          <div class="booking-row">
+            <div class="booking-info">
+              <strong>${b.student_name}</strong>
+              <span>${b.date} ${sessionMap[b.session] || b.session}</span>
+              ${b.notes ? `<small>${b.notes}</small>` : ''}
+            </div>
+            <div class="booking-actions">
+              <button class="btn-sm btn-success" onclick="updateBooking('${b.id}','confirmed')">接受</button>
+              <button class="btn-sm btn-danger" onclick="updateBooking('${b.id}','rejected')">拒絕</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('pendingBookings').innerHTML = '<p>載入失敗</p>';
+      }
+    }
+
+    async function updateBooking(id, status) {
+      if (!confirm(status === 'confirmed' ? '確認接受此預約？' : '確認拒絕此預約？')) return;
+      try {
+        const res = await fetch(`/api/bookings/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status })
+        });
+        if (res.ok) {
+          showToast(status === 'confirmed' ? '已接受，通知已發送' : '已拒絕，通知已發送');
+          await loadPendingBookings();
+          await loadStats();
+        }
+      } catch { showToast('操作失敗', 'error'); }
+    }
+  </script>
+</body>
+</html>

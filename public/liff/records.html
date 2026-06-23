@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>課程紀錄</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <script src="/config.js"></script>
+  <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
+  <style>
+    .record-card {
+      background: #fff;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .record-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .record-date { font-weight: 700; font-size: 16px; }
+    .record-student { font-size: 13px; color: var(--gray-600); margin-top: 2px; }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2px;
+    }
+    .photo-grid.single { grid-template-columns: 1fr; }
+    .photo-grid.double { grid-template-columns: 1fr 1fr; }
+    .photo-item {
+      aspect-ratio: 1;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .photo-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s;
+    }
+    .photo-item img:hover { transform: scale(1.05); }
+    .record-desc {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: var(--gray-600);
+      line-height: 1.6;
+    }
+    /* 全螢幕預覽 */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .lightbox.active { display: flex; }
+    .lightbox img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      color: #fff;
+      font-size: 32px;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <h1>📸 課程紀錄</h1>
+  </header>
+
+  <div class="container">
+    <div id="loading" class="loading">載入中...</div>
+    <div id="records"></div>
+    <div id="empty" class="empty" style="display:none">
+      <div class="empty-icon">📷</div>
+      <p>目前還沒有課程紀錄</p>
+      <p style="font-size:13px;margin-top:8px;color:#9ca3af">上完課後教練會上傳照片與紀錄</p>
+    </div>
+    <div id="loadMore" style="display:none;text-align:center;padding:16px">
+      <button class="btn btn-outline" id="loadMoreBtn" style="width:auto;padding:8px 24px">載入更多</button>
+    </div>
+  </div>
+
+  <!-- 圖片全螢幕預覽 -->
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
+  <script>
+    let lineUserId = null;
+    let offset = 0;
+    const limit = 10;
+    let total = 0;
+
+    async function init() {
+      try {
+        const liffId = window.APP_CONFIG?.liffIdRecords || '__LIFF_ID_RECORDS__';
+        await liff.init({ liffId });
+        if (liff.isLoggedIn()) {
+          const profile = await liff.getProfile();
+          lineUserId = profile.userId;
+        }
+        await loadRecords();
+      } catch (err) {
+        console.error('初始化失敗:', err);
+        document.getElementById('loading').innerHTML = '❌ 載入失敗，請重新整理';
+      }
+    }
+
+    async function loadRecords(append = false) {
+      try {
+        const params = new URLSearchParams({ limit, offset });
+        if (lineUserId) params.set('line_user_id', lineUserId);
+
+        const res = await fetch(`/api/records?${params}`);
+        const data = await res.json();
+        const records = data.records || [];
+
+        document.getElementById('loading').style.display = 'none';
+
+        if (records.length === 0 && !append) {
+          document.getElementById('empty').style.display = 'block';
+          return;
+        }
+
+        const container = document.getElementById('records');
+        records.forEach(record => {
+          container.insertAdjacentHTML('beforeend', renderRecord(record));
+        });
+
+        offset += records.length;
+        if (records.length === limit) {
+          document.getElementById('loadMore').style.display = 'block';
+        } else {
+          document.getElementById('loadMore').style.display = 'none';
+        }
+      } catch (err) {
+        console.error('載入失敗:', err);
+        document.getElementById('loading').innerHTML = '❌ 載入失敗';
+      }
+    }
+
+    function renderRecord(record) {
+      const photos = record.photos || [];
+      let photoHtml = '';
+      if (photos.length > 0) {
+        const gridClass = photos.length === 1 ? 'single' : photos.length === 2 ? 'double' : '';
+        const displayPhotos = photos.slice(0, 6);
+        photoHtml = `<div class="photo-grid ${gridClass}">
+          ${displayPhotos.map((p, i) => `
+            <div class="photo-item" onclick="openLightbox('${p.url}')">
+              <img src="${p.thumbnail_url || p.url}" alt="課程照片" loading="lazy">
+            </div>
+          `).join('')}
+        </div>`;
+      }
+
+      return `
+        <div class="record-card">
+          <div class="record-header">
+            <div class="record-date">📅 ${record.date}</div>
+            <div class="record-student">👤 ${record.student_name || ''}</div>
+          </div>
+          ${photoHtml}
+          ${record.description ? `<div class="record-desc">${escHtml(record.description)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function openLightbox(url) {
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightbox').classList.add('active');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+    }
+
+    document.getElementById('lightbox').addEventListener('click', function(e) {
+      if (e.target === this) closeLightbox();
+    });
+
+    document.getElementById('loadMoreBtn').addEventListener('click', () => loadRecords(true));
+
+    init();
+  </script>
+</body>
+</html>
