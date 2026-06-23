@@ -1,6 +1,6 @@
 const express = require('express');
 const { supabase } = require('../utils/supabase');
-const { pushMessage, replyMessage, bookingConfirmFlex, textMessage } = require('../utils/line');
+const { pushMessage, bookingConfirmFlex, textMessage } = require('../utils/line');
 const { requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
@@ -42,6 +42,29 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: '不能預約過去的日期' });
     }
 
+    // 黑名單檢查
+    const { count: blacklistCount, error: blErr } = await supabase
+      .from('blacklist')
+      .select('id', { count: 'exact', head: true })
+      .eq('line_user_id', line_user_id);
+
+    if (blErr) throw blErr;
+    if (blacklistCount > 0) {
+      return res.status(403).json({ error: '無法完成預約，如有疑問請直接聯繫教練' });
+    }
+
+    // 同一帳號 pending 預約上限（最多 3 筆）
+    const { count: pendingCount, error: pendingErr } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('line_user_id', line_user_id)
+      .eq('status', 'pending');
+
+    if (pendingErr) throw pendingErr;
+    if (pendingCount >= 3) {
+      return res.status(400).json({ error: '您目前有 3 筆待確認的預約，請等教練確認後再預約新課程' });
+    }
+
     // 寫入資料庫
     const { data, error } = await supabase
       .from('bookings')
@@ -66,6 +89,67 @@ router.post('/', async (req, res) => {
   } catch (err) {
     console.error('[Bookings] 未預期錯誤:', err.message);
     res.status(500).json({ error: '系統錯誤' });
+  }
+});
+
+/**
+ * PATCH /api/bookings/:id/cancel
+ * LIFF 使用者自助取消預約（公開，需帶 line_user_id 驗證身份）
+ * 規則：距離上課不足 24 小時不可取消
+ */
+router.patch('/:id/cancel', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const line_user_id = req.body.line_user_id?.trim();
+
+    if (!line_user_id) {
+      return res.status(400).json({ error: '缺少 line_user_id' });
+    }
+
+    // 取得預約資料並確認所有權
+    const { data: booking, error: fetchErr } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchErr || !booking) {
+      return res.status(404).json({ error: '找不到此預約' });
+    }
+
+    if (booking.line_user_id !== line_user_id) {
+      return res.status(403).json({ error: '無權取消此預約' });
+    }
+
+    if (!['pending', 'confirmed'].includes(booking.status)) {
+      return res.status(400).json({ error: '此預約無法取消' });
+    }
+
+    // 計算上課時間，檢查是否距離不足 24 小時
+    const sessionStartHour = getSessionStartHour(booking.session);
+    const classTime = new Date(`${booking.date}T${String(sessionStartHour).padStart(2,'0')}:00:00+08:00`);
+    const now = new Date();
+    const hoursUntilClass = (classTime - now) / (1000 * 60 * 60);
+
+    if (hoursUntilClass < 24) {
+      return res.status(400).json({ error: '距離上課不足 24 小時，如需取消請直接聯絡教練' });
+    }
+
+    // 更新為已取消
+    const { data, error } = await supabase
+      .from('bookings')
+      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    console.log(`[Bookings] 使用者取消預約 id=${id}，學生：${booking.student_name}`);
+    res.json({ success: true, booking: data });
+  } catch (err) {
+    console.error('[Bookings] 取消失敗:', err.message);
+    res.status(500).json({ error: '取消失敗，請稍後再試' });
   }
 });
 
@@ -96,7 +180,7 @@ router.get('/', requireAdmin, async (req, res) => {
 
 /**
  * PATCH /api/bookings/:id
- * 後台更新預約狀態（接受/拒絕）（需登入）
+ * 後台更新預約狀態（接受/拒絕/取消）（需登入）
  */
 router.patch('/:id', requireAdmin, async (req, res) => {
   try {
@@ -150,8 +234,8 @@ router.patch('/:id', requireAdmin, async (req, res) => {
 });
 
 /**
- * GET /api/bookings/my
- * LIFF 查詢個人預約紀錄（透過 line_user_id）
+ * GET /api/bookings/my/:lineUserId
+ * LIFF 查詢個人預約紀錄
  */
 router.get('/my/:lineUserId', async (req, res) => {
   try {
@@ -170,12 +254,19 @@ router.get('/my/:lineUserId', async (req, res) => {
   }
 });
 
+/** 將 session 轉為可讀文字 */
 function getSessionLabel(session) {
   const map = { morning: '早上', afternoon: '下午', evening: '晚上' };
   if (map[session]) return map[session];
-  // HH:MM 格式：顯示起訖時間
   const h = parseInt(session.split(':')[0]);
   return `${session}–${String(h + 1).padStart(2,'0')}:00`;
+}
+
+/** 取得 session 的起始小時數（用於 24h 取消檢查） */
+function getSessionStartHour(session) {
+  const legacyMap = { morning: 9, afternoon: 13, evening: 18 };
+  if (legacyMap[session] !== undefined) return legacyMap[session];
+  return parseInt(session.split(':')[0]);
 }
 
 module.exports = router;

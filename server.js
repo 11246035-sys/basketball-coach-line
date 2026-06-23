@@ -10,6 +10,7 @@ const bookingsRouter = require('./src/routes/bookings');
 const recordsRouter = require('./src/routes/records');
 const studentsRouter = require('./src/routes/students');
 const adminRouter = require('./src/routes/admin');
+const blacklistRouter = require('./src/routes/blacklist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -92,6 +93,7 @@ app.use('/api/bookings', bookingsRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/students', studentsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/blacklist', blacklistRouter);
 
 // 健康檢查（Railway 部署時使用）
 app.get('/health', (req, res) => {
