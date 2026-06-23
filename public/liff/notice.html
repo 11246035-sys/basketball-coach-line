@@ -37,6 +37,7 @@
       margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
     }
     .venue-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+    .venue-photos.two-col { grid-template-columns: repeat(2, 1fr); }
     .venue-photo-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
     .venue-photo-item img {
       width: 100%; aspect-ratio: 4/3; object-fit: cover;
@@ -106,18 +107,23 @@
         <li><span>🏀</span><span>主要以室外河濱球場、學校室外球場為主</span></li>
       </ul>
 
-      <div class="venue-photos">
+      <!-- B•SHOOT 兩張照片 -->
+      <div class="venue-photos two-col" style="margin-top:14px">
         <div class="venue-photo-item">
-          <img id="venue-1" src="https://placehold.co/300x225/FF6B00/white?text=內湖運動中心" alt="內湖運動中心">
-          <span>內湖運動中心</span>
+          <img id="venue-1" src="/assets/venues/bshoot-1.jpg" alt="B•SHOOT 投籃機與紅框籃板" loading="lazy">
+          <span>B•SHOOT 投籃機</span>
         </div>
         <div class="venue-photo-item">
-          <img id="venue-2" src="https://placehold.co/300x225/e85f00/white?text=B•SHOOT" alt="B•SHOOT 智能投籃基地">
+          <img id="venue-2" src="/assets/venues/bshoot-2.jpg" alt="B•SHOOT 基地 logo 牆" loading="lazy">
           <span>B•SHOOT 基地</span>
         </div>
+      </div>
+
+      <!-- 內湖運動中心一張照片 -->
+      <div class="venue-photos" style="grid-template-columns:1fr;margin-top:10px">
         <div class="venue-photo-item">
-          <img id="venue-3" src="https://placehold.co/300x225/ff8c38/white?text=河濱球場" alt="室外河濱球場">
-          <span>室外河濱球場</span>
+          <img id="venue-3" src="/assets/venues/neihu.jpg" alt="內湖運動中心 8 樓籃球場" loading="lazy">
+          <span>內湖運動中心 8 樓大球館</span>
         </div>
       </div>
     </div>
