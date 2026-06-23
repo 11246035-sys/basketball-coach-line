@@ -106,7 +106,7 @@
 
     async function init() {
       try {
-        const liffId = window.APP_CONFIG?.liffIdRecords || '__LIFF_ID_RECORDS__';
+        const liffId = window.APP_CONFIG?.liffIdRecords || '2010463411-fdvR13St';
         await liff.init({ liffId });
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
