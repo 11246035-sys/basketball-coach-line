@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑名單管理</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+</head>
+<body>
+  <nav class="admin-nav">
+    <div class="nav-brand">🏀 籃球家教後台</div>
+    <button class="nav-logout" id="logoutBtn">登出</button>
+  </nav>
+
+  <div class="admin-tabs">
+    <a href="dashboard.html" class="tab">📊 總覽</a>
+    <a href="bookings.html" class="tab">📅 預約管理</a>
+    <a href="records.html" class="tab">📸 課程紀錄</a>
+    <a href="students.html" class="tab">👥 學生管理</a>
+    <a href="blacklist.html" class="tab active">🚫 黑名單</a>
+  </div>
+
+  <div class="admin-container">
+
+    <!-- 新增表單 -->
+    <div class="card">
+      <div class="card-title">🚫 新增黑名單</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" id="newLineId" placeholder="LINE User ID（必填）"
+          style="flex:2;min-width:180px;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none">
+        <input type="text" id="newReason" placeholder="封鎖原因（選填）"
+          style="flex:2;min-width:180px;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;outline:none">
+        <button class="btn btn-danger" onclick="addToBlacklist()"
+          style="width:auto;padding:8px 20px;font-size:14px">加入黑名單</button>
+      </div>
+      <div id="addAlert" style="margin-top:10px"></div>
+    </div>
+
+    <!-- 黑名單清單 -->
+    <div id="blacklistContent"><div class="loading">載入中...</div></div>
+  </div>
+
+  <script src="/assets/js/admin-common.js"></script>
+  <script>
+    requireLogin(loadBlacklist);
+
+    async function loadBlacklist() {
+      try {
+        const res = await fetch('/api/blacklist');
+        const data = await res.json();
+        const list = data.blacklist || [];
+
+        if (list.length === 0) {
+          document.getElementById('blacklistContent').innerHTML =
+            '<div class="empty"><div class="empty-icon">✅</div><p>目前黑名單為空</p></div>';
+          return;
+        }
+
+        document.getElementById('blacklistContent').innerHTML = `
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>LINE User ID</th>
+                <th>封鎖原因</th>
+                <th>加入時間</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(e => `
+                <tr>
+                  <td style="font-family:monospace;font-size:12px">${e.line_user_id}</td>
+                  <td>${e.reason || '<span style="color:#9ca3af">未填</span>'}</td>
+                  <td>${new Date(e.created_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei'})}</td>
+                  <td>
+                    <button class="btn-sm btn-outline" onclick="removeFromBlacklist('${e.id}')">移除</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (err) {
+        document.getElementById('blacklistContent').innerHTML = '<div class="alert alert-error">載入失敗</div>';
+      }
+    }
+
+    async function addToBlacklist() {
+      const line_user_id = document.getElementById('newLineId').value.trim();
+      const reason = document.getElementById('newReason').value.trim();
+      const alertBox = document.getElementById('addAlert');
+
+      if (!line_user_id) {
+        alertBox.innerHTML = '<div class="alert alert-error">請填寫 LINE User ID</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/blacklist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ line_user_id, reason })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alertBox.innerHTML = '<div class="alert alert-success">已加入黑名單</div>';
+          document.getElementById('newLineId').value = '';
+          document.getElementById('newReason').value = '';
+          loadBlacklist();
+        } else {
+          alertBox.innerHTML = `<div class="alert alert-error">${data.error}</div>`;
+        }
+      } catch {
+        alertBox.innerHTML = '<div class="alert alert-error">操作失敗，請稍後再試</div>';
+      }
+    }
+
+    async function removeFromBlacklist(id) {
+      if (!confirm('確認移除此黑名單？移除後該用戶可再次預約。')) return;
+      try {
+        const res = await fetch(`/api/blacklist/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('已從黑名單移除');
+          loadBlacklist();
+        } else {
+          showToast('移除失敗', 'error');
+        }
+      } catch {
+        showToast('操作失敗', 'error');
+      }
+    }
+  </script>
+</body>
+</html>
