@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const webhookRouter = require('./src/webhook');
 const bookingsRouter = require('./src/routes/bookings');
@@ -66,7 +67,27 @@ app.get('/config.js', (req, res) => {
 // 靜態檔案（LIFF 頁面與後台）
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API 路由
+// Rate limiting：預約送出每 IP 每 15 分鐘最多 10 次，防止濫發
+const bookingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: '請求過於頻繁，請稍後再試' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Rate limiting：後台登入每 IP 每 15 分鐘最多 20 次，防止暴力破解
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: '嘗試次數過多，請 15 分鐘後再試' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// API 路由（POST /api/bookings 與 POST /api/admin/login 套用 rate limit）
+app.post('/api/bookings', bookingLimiter);
+app.post('/api/admin/login', loginLimiter);
 app.use('/api/bookings', bookingsRouter);
 app.use('/api/records', recordsRouter);
 app.use('/api/students', studentsRouter);
