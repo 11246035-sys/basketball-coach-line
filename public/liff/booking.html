@@ -4,182 +4,371 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>預約課程</title>
+  <link rel="preconnect" href="https://static.line-scdn.net">
+  <link rel="dns-prefetch" href="https://static.line-scdn.net">
   <link rel="stylesheet" href="/assets/css/common.css">
   <script src="/config.js"></script>
-  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
-    .session-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 6px;
+    :root { --brand: #FF6B00; --brand-dark: #e85f00; --brand-light: #fff3eb; }
+    body { background: #fff8f3; }
+    .page-header {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
+      color: #fff; padding: 24px 16px 20px; text-align: center;
+      position: relative; overflow: hidden; margin-bottom: 16px;
     }
-    .session-option {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 8px;
-      border: 2px solid var(--gray-200);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
+    .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
+    .page-header .ball { position: absolute; font-size: 120px; opacity: 0.15; right: -20px; top: -20px; transform: rotate(-15deg); }
+    .notice-tip {
+      background: var(--brand-light); border-left: 4px solid var(--brand);
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+      font-size: 13px; color: #7a3e00; line-height: 1.7;
     }
-    .session-option input[type="radio"] { display: none; }
-    .session-option.selected {
-      border-color: var(--orange);
-      background: #fff7ed;
+    .notice-tip strong { color: var(--brand-dark); }
+    .returning-banner {
+      background: #ecfdf5; border-left: 4px solid #22c55e;
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+      font-size: 13px; color: #166534; line-height: 1.6;
     }
-    .session-option .icon { font-size: 24px; margin-bottom: 4px; }
-    .session-option .label { font-size: 13px; font-weight: 600; }
-    .session-option .time { font-size: 11px; color: var(--gray-600); }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .session-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .session-tab {
+      flex: 1; padding: 8px 4px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; background: #fff; font-size: 12px; font-weight: 600;
+      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .session-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+    .level-tabs { display: flex; gap: 8px; }
+    .level-tab {
+      flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; background: #fff; font-size: 13px; font-weight: 600;
+      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .level-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+    .time-select-wrap select {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid var(--gray-200); border-radius: 8px;
+      font-size: 15px; outline: none; appearance: none;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+      cursor: pointer; font-family: inherit;
+    }
+    .time-select-wrap select:focus { border-color: var(--brand); }
+    .time-end-hint { margin-top: 6px; font-size: 13px; color: var(--brand); font-weight: 600; min-height: 20px; }
+    .success-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.97);
+      z-index: 2000; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 24px;
+    }
+    .success-overlay.active { display: flex; }
+    .checkmark-circle {
+      width: 96px; height: 96px; border-radius: 50%; background: var(--brand);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+      animation: pop 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .checkmark-circle svg { width: 50px; height: 50px; }
+    .checkmark-circle svg path {
+      stroke: #fff; stroke-width: 6; fill: none;
+      stroke-dasharray: 60; stroke-dashoffset: 60;
+      animation: draw 0.5s 0.3s forwards ease-out;
+    }
+    @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    .success-overlay h2 { font-size: 22px; color: var(--brand-dark); margin-bottom: 10px; }
+    .success-overlay .detail {
+      background: var(--brand-light); border-radius: 10px;
+      padding: 16px 20px; font-size: 14px; color: #5c3000; line-height: 1.9; margin-top: 8px;
+    }
+    .success-overlay .hint { font-size: 12px; color: #9ca3af; margin-top: 16px; }
+    .required-hint { font-size: 12px; color: #9ca3af; font-weight: normal; margin-left: 4px; }
   </style>
 </head>
 <body>
   <header class="page-header">
+    <span class="ball">🏀</span>
     <h1>📅 預約課程</h1>
+    <div class="subtitle">填寫資料，輕鬆預約籃球課程</div>
   </header>
 
   <div class="container">
-    <div id="loading" class="loading">初始化中...</div>
+    <div id="loading" class="loading"><div class="spinner"></div>初始化中...</div>
     <div id="main" style="display:none">
+
+      <div id="returningBanner" class="returning-banner" style="display:none">
+        👋 <strong>歡迎回來！</strong>已為您帶入上次的資料，確認後選擇日期和時段即可送出。
+      </div>
+
+      <div class="notice-tip">
+        <strong>📌 預約須知</strong><br>
+        • 請於上課<strong>前 3 天</strong>提出預約，方便教練安排<br>
+        • 送出後教練會審核，並透過 <strong>LINE 通知</strong>您結果<br>
+        • 如需取消或改期，請提前 <strong>24 小時</strong>告知
+      </div>
+
       <div class="card">
-        <form id="bookingForm">
+        <form id="bookingForm" novalidate>
+
+          <!-- 學生姓名 -->
           <div class="form-group">
-            <label>學生姓名 *</label>
-            <input type="text" id="studentName" placeholder="請輸入學生姓名" required maxlength="50">
+            <label for="studentName">學生姓名 <span style="color:var(--brand)">*</span></label>
+            <input type="text" id="studentName" aria-required="true"
+              placeholder="請輸入學生姓名" required maxlength="50" autocomplete="name">
           </div>
 
+          <!-- 年級 -->
           <div class="form-group">
-            <label>上課日期 *</label>
-            <input type="date" id="date" required>
+            <label for="grade">學生年級 <span style="color:var(--brand)">*</span></label>
+            <select id="grade" aria-required="true" required>
+              <option value="">請選擇年級</option>
+              <option value="國小低年級">國小低年級（1-2年級）</option>
+              <option value="國小中年級">國小中年級（3-4年級）</option>
+              <option value="國小高年級">國小高年級（5-6年級）</option>
+              <option value="國中">國中</option>
+              <option value="高中">高中</option>
+              <option value="成人">成人</option>
+            </select>
           </div>
 
+          <!-- 籃球程度 -->
           <div class="form-group">
-            <label>上課時段 *</label>
-            <div class="session-grid">
-              <label class="session-option" id="opt-morning">
-                <input type="radio" name="session" value="morning">
-                <span class="icon">🌅</span>
-                <span class="label">早上</span>
-                <span class="time">09:00-12:00</span>
-              </label>
-              <label class="session-option" id="opt-afternoon">
-                <input type="radio" name="session" value="afternoon">
-                <span class="icon">☀️</span>
-                <span class="label">下午</span>
-                <span class="time">13:00-17:00</span>
-              </label>
-              <label class="session-option" id="opt-evening">
-                <input type="radio" name="session" value="evening">
-                <span class="icon">🌙</span>
-                <span class="label">晚上</span>
-                <span class="time">18:00-21:00</span>
-              </label>
+            <label>籃球程度 <span style="color:var(--brand)">*</span></label>
+            <div class="level-tabs" role="group" aria-label="選擇籃球程度">
+              <div class="level-tab" data-level="初學者" role="button" tabindex="0"
+                onclick="selectLevel('初學者', this)">🔰 初學者</div>
+              <div class="level-tab" data-level="有基礎" role="button" tabindex="0"
+                onclick="selectLevel('有基礎', this)">⭐ 有基礎</div>
+              <div class="level-tab" data-level="進階" role="button" tabindex="0"
+                onclick="selectLevel('進階', this)">🏆 進階</div>
             </div>
           </div>
 
+          <!-- 聯絡電話 -->
           <div class="form-group">
-            <label>備註（選填）</label>
-            <textarea id="notes" placeholder="例如：需要加強三分球投籃、第一次上課等" maxlength="200"></textarea>
+            <label for="phone">聯絡電話 <span style="color:var(--brand)">*</span></label>
+            <input type="tel" id="phone" aria-required="true"
+              placeholder="例如：0912-345-678" maxlength="20" autocomplete="tel">
           </div>
 
-          <div id="alertBox"></div>
+          <!-- 上課日期 -->
+          <div class="form-group">
+            <label for="date">上課日期 <span style="color:var(--brand)">*</span></label>
+            <input type="date" id="date" aria-required="true" required>
+          </div>
 
-          <button type="submit" class="btn btn-primary" id="submitBtn">
-            📅 送出預約
-          </button>
+          <!-- 上課時段 -->
+          <div class="form-group">
+            <label>上課時段 <span style="color:var(--brand)">*</span></label>
+            <div class="session-tabs" role="group" aria-label="選擇上課時段">
+              <div class="session-tab active" data-period="morning" role="button" tabindex="0"
+                aria-pressed="true" onclick="switchPeriod('morning', this)">🌅 早上</div>
+              <div class="session-tab" data-period="afternoon" role="button" tabindex="0"
+                aria-pressed="false" onclick="switchPeriod('afternoon', this)">☀️ 下午</div>
+              <div class="session-tab" data-period="evening" role="button" tabindex="0"
+                aria-pressed="false" onclick="switchPeriod('evening', this)">🌙 晚上</div>
+            </div>
+            <div class="time-select-wrap">
+              <select id="timeSelect" aria-label="選擇上課時間" onchange="updateEndHint()">
+                <option value="">請選擇時間</option>
+              </select>
+            </div>
+            <div class="time-end-hint" id="endHint" aria-live="polite"></div>
+          </div>
+
+          <!-- 理想地區 -->
+          <div class="form-group">
+            <label for="location">理想地區或球場<span class="required-hint">（選填）</span></label>
+            <input type="text" id="location"
+              placeholder="例如：內湖運動中心、河濱球場、或您方便的地區" maxlength="100">
+          </div>
+
+          <!-- 訓練目標 -->
+          <div class="form-group">
+            <label for="goal">訓練目標<span class="required-hint">（選填）</span></label>
+            <input type="text" id="goal"
+              placeholder="例如：加強投籃、想進校隊、基礎體能" maxlength="100">
+          </div>
+
+          <!-- 備註 -->
+          <div class="form-group">
+            <label for="notes">備註<span class="required-hint">（選填）</span></label>
+            <textarea id="notes" placeholder="其他補充說明" maxlength="200"></textarea>
+          </div>
+
+          <div id="alertBox" role="alert" aria-live="assertive"></div>
+
+          <button type="submit" class="btn btn-primary" id="submitBtn" aria-label="送出預約表單">🏀 送出預約</button>
         </form>
       </div>
     </div>
   </div>
 
+  <div class="success-overlay" id="successOverlay">
+    <div class="checkmark-circle">
+      <svg viewBox="0 0 60 60"><path d="M14 30 L26 42 L46 18"/></svg>
+    </div>
+    <h2>預約成功！</h2>
+    <p style="color:#6b7280;font-size:14px">教練確認後將透過 LINE 通知您</p>
+    <div class="detail" id="successDetail"></div>
+    <div class="hint">視窗將自動關閉…</div>
+  </div>
+
   <script>
     let lineUserId = null;
+    let currentPeriod = 'morning';
+    let selectedLevel = '';
 
-    // 設定日期最小值為今天
+    const PERIODS = {
+      morning:   { times: ['09:00','10:00','11:00'] },
+      afternoon: { times: ['13:00','14:00','15:00','16:00'] },
+      evening:   { times: ['18:00','19:00','20:00'] }
+    };
+
     document.getElementById('date').min = new Date().toISOString().split('T')[0];
-    // 預設選擇三天後
     const defaultDate = new Date();
     defaultDate.setDate(defaultDate.getDate() + 3);
     document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
 
-    // 時段選項點擊效果
-    document.querySelectorAll('.session-option').forEach(el => {
-      el.addEventListener('click', () => {
-        document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-        el.classList.add('selected');
+    function switchPeriod(period, el) {
+      currentPeriod = period;
+      document.querySelectorAll('.session-tab').forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-pressed', 'false');
+      });
+      el.classList.add('active');
+      el.setAttribute('aria-pressed', 'true');
+      const sel = document.getElementById('timeSelect');
+      sel.innerHTML = '<option value="">請選擇時間</option>';
+      PERIODS[period].times.forEach(t => {
+        sel.insertAdjacentHTML('beforeend', `<option value="${t}">${t}</option>`);
+      });
+      document.getElementById('endHint').textContent = '';
+    }
+
+    function selectLevel(level, el) {
+      selectedLevel = level;
+      document.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    function updateEndHint() {
+      const val = document.getElementById('timeSelect').value;
+      const hint = document.getElementById('endHint');
+      if (!val) { hint.textContent = ''; return; }
+      const h = parseInt(val.split(':')[0]);
+      hint.textContent = `⏱ ${val} – ${String(h + 1).padStart(2, '0')}:00（60 分鐘）`;
+    }
+
+    switchPeriod('morning', document.querySelector('.session-tab[data-period="morning"]'));
+
+    // 鍵盤支援 level tabs
+    document.querySelectorAll('.level-tab').forEach(tab => {
+      tab.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectLevel(tab.dataset.level, tab);
+        }
       });
     });
 
+    async function loadProfile(uid) {
+      try {
+        const res = await fetch(`/api/students/profile?lineUserId=${encodeURIComponent(uid)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.student) return;
+        const s = data.student;
+        if (s.name) document.getElementById('studentName').value = s.name;
+        if (s.grade) document.getElementById('grade').value = s.grade;
+        if (s.level) {
+          const el = document.querySelector(`.level-tab[data-level="${s.level}"]`);
+          if (el) selectLevel(s.level, el);
+        }
+        if (s.phone) document.getElementById('phone').value = s.phone;
+        if (s.location) document.getElementById('location').value = s.location;
+        if (s.goal) document.getElementById('goal').value = s.goal;
+        document.getElementById('returningBanner').style.display = 'block';
+      } catch {
+        // 新用戶或查無資料，靜默失敗
+      }
+    }
+
     async function init() {
       try {
-        const liffId = window.APP_CONFIG?.liffIdBooking || '2010463411-WejiNtQk';
+        const liffId = window.APP_CONFIG?.liffIdBooking || '';
         await liff.init({ liffId });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
+        if (!liff.isLoggedIn()) { liff.login(); return; }
         const profile = await liff.getProfile();
         lineUserId = profile.userId;
-
+        await loadProfile(lineUserId);
         document.getElementById('loading').style.display = 'none';
         document.getElementById('main').style.display = 'block';
       } catch (err) {
         console.error('LIFF 初始化失敗:', err);
-        document.getElementById('loading').innerHTML = '❌ 初始化失敗，請關閉後重新開啟';
+        document.getElementById('loading').innerHTML =
+          '<div style="color:#991b1b;font-size:15px">❌ 初始化失敗</div>' +
+          '<p style="font-size:13px;color:#6b7280;margin-top:8px">請關閉視窗後重新開啟，或確認網路連線正常。</p>';
       }
     }
 
     document.getElementById('bookingForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-
       const studentName = document.getElementById('studentName').value.trim();
+      const grade = document.getElementById('grade').value;
+      const level = selectedLevel;
+      const phone = document.getElementById('phone').value.trim();
       const date = document.getElementById('date').value;
-      const session = document.querySelector('input[name="session"]:checked')?.value;
+      const session = document.getElementById('timeSelect').value;
+      const location = document.getElementById('location').value.trim();
+      const goal = document.getElementById('goal').value.trim();
       const notes = document.getElementById('notes').value.trim();
 
-      if (!studentName || !date || !session) {
-        showAlert('error', '請填寫學生姓名、日期，並選擇時段');
-        return;
-      }
+      if (!studentName) { showAlert('請填寫學生姓名'); return; }
+      if (!grade) { showAlert('請選擇學生年級'); return; }
+      if (!level) { showAlert('請選擇籃球程度'); return; }
+      if (!phone) { showAlert('請填寫聯絡電話'); return; }
+      if (!/^[\d\-\+\s\(\)]{8,20}$/.test(phone)) { showAlert('請輸入有效的電話號碼（數字、-、+）'); return; }
+      if (!date) { showAlert('請選擇上課日期'); return; }
+      if (!session) { showAlert('請選擇上課時間'); return; }
 
       const btn = document.getElementById('submitBtn');
-      btn.disabled = true;
-      btn.textContent = '送出中...';
+      btn.disabled = true; btn.textContent = '送出中...';
 
       try {
         const res = await fetch('/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ line_user_id: lineUserId, student_name: studentName, date, session, notes })
+          body: JSON.stringify({
+            line_user_id: lineUserId,
+            student_name: studentName,
+            grade, level, phone, date, session,
+            location: location || null,
+            goal: goal || null,
+            notes: notes || null
+          })
         });
-
         const data = await res.json();
-
         if (res.ok) {
-          showAlert('success', '✅ 預約成功！教練確認後會透過 LINE 通知您。');
-          document.getElementById('bookingForm').reset();
-          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-          document.getElementById('date').value = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
-          setTimeout(() => liff.closeWindow(), 3000);
+          const h = parseInt(session.split(':')[0]);
+          const endTime = `${String(h + 1).padStart(2,'0')}:00`;
+          document.getElementById('successDetail').innerHTML =
+            `👤 ${studentName}（${grade}・${level}）<br>📅 ${date}<br>⏰ ${session}–${endTime}${location ? '<br>📍 ' + location : ''}`;
+          document.getElementById('successOverlay').classList.add('active');
+          setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 3500);
         } else {
-          showAlert('error', data.error || '預約失敗，請稍後再試');
+          showAlert(data.error || '預約失敗，請稍後再試');
+          btn.disabled = false; btn.textContent = '🏀 送出預約';
         }
-      } catch (err) {
-        showAlert('error', '網路錯誤，請稍後再試');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '📅 送出預約';
+      } catch {
+        showAlert('網路錯誤，請稍後再試');
+        btn.disabled = false; btn.textContent = '🏀 送出預約';
       }
     });
 
-    function showAlert(type, msg) {
+    function showAlert(msg) {
       const box = document.getElementById('alertBox');
-      box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      box.innerHTML = `<div class="alert alert-error">${msg}</div>`;
       box.scrollIntoView({ behavior: 'smooth' });
     }
 
