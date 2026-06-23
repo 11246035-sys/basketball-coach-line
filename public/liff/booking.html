@@ -90,45 +90,51 @@
       </div>
 
       <div class="card">
-        <form id="bookingForm">
+        <form id="bookingForm" novalidate>
           <div class="form-group">
-            <label>學生姓名 *</label>
-            <input type="text" id="studentName" placeholder="請輸入學生姓名" required maxlength="50">
+            <label for="studentName">學生姓名 *</label>
+            <input type="text" id="studentName" aria-required="true" aria-label="學生姓名（必填）"
+              placeholder="請輸入學生姓名" required maxlength="50" autocomplete="name">
           </div>
 
           <div class="form-group">
-            <label>上課日期 *</label>
-            <input type="date" id="date" required>
+            <label for="date">上課日期 *</label>
+            <input type="date" id="date" aria-required="true" aria-label="上課日期（必填）" required>
           </div>
 
           <div class="form-group">
-            <label>理想地區或球場（選填）</label>
-            <input type="text" id="location" placeholder="例如：內湖運動中心、河濱球場、或您方便的地區" maxlength="100">
+            <label for="location">理想地區或球場（選填）</label>
+            <input type="text" id="location" aria-label="理想地區或球場（選填）"
+              placeholder="例如：內湖運動中心、河濱球場、或您方便的地區" maxlength="100">
           </div>
 
           <div class="form-group">
             <label>上課時段 *</label>
-            <div class="session-tabs">
-              <div class="session-tab active" data-period="morning" onclick="switchPeriod('morning', this)">🌅 早上</div>
-              <div class="session-tab" data-period="afternoon" onclick="switchPeriod('afternoon', this)">☀️ 下午</div>
-              <div class="session-tab" data-period="evening" onclick="switchPeriod('evening', this)">🌙 晚上</div>
+            <div class="session-tabs" role="group" aria-label="選擇上課時段">
+              <div class="session-tab active" data-period="morning" role="button" tabindex="0"
+                aria-pressed="true" onclick="switchPeriod('morning', this)">🌅 早上</div>
+              <div class="session-tab" data-period="afternoon" role="button" tabindex="0"
+                aria-pressed="false" onclick="switchPeriod('afternoon', this)">☀️ 下午</div>
+              <div class="session-tab" data-period="evening" role="button" tabindex="0"
+                aria-pressed="false" onclick="switchPeriod('evening', this)">🌙 晚上</div>
             </div>
             <div class="time-select-wrap">
-              <select id="timeSelect" onchange="updateEndHint()">
+              <select id="timeSelect" aria-label="選擇上課時間" aria-required="true" onchange="updateEndHint()">
                 <option value="">請選擇時間</option>
               </select>
             </div>
-            <div class="time-end-hint" id="endHint"></div>
+            <div class="time-end-hint" id="endHint" aria-live="polite"></div>
           </div>
 
           <div class="form-group">
-            <label>備註（選填）</label>
-            <textarea id="notes" placeholder="例如：需要加強三分球投籃、第一次上課等" maxlength="200"></textarea>
+            <label for="notes">備註（選填）</label>
+            <textarea id="notes" aria-label="備註（選填）"
+              placeholder="例如：需要加強三分球投籃、第一次上課等" maxlength="200"></textarea>
           </div>
 
-          <div id="alertBox"></div>
+          <div id="alertBox" role="alert" aria-live="assertive"></div>
 
-          <button type="submit" class="btn btn-primary" id="submitBtn">🏀 送出預約</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn" aria-label="送出預約表單">🏀 送出預約</button>
         </form>
       </div>
     </div>

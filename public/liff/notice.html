@@ -190,10 +190,11 @@
     faqs.forEach((item, i) => {
       list.insertAdjacentHTML('beforeend', `
         <div class="faq-item">
-          <button class="faq-question" onclick="toggleFaq(${i}, this)">
-            <span>Q：${item.q}</span><span class="arrow">▼</span>
+          <button class="faq-question" onclick="toggleFaq(${i}, this)"
+            aria-expanded="false" aria-controls="faq-${i}">
+            <span>Q：${item.q}</span><span class="arrow" aria-hidden="true">▼</span>
           </button>
-          <div class="faq-answer" id="faq-${i}">A：${item.a}</div>
+          <div class="faq-answer" id="faq-${i}" role="region">A：${item.a}</div>
         </div>
       `);
     });
@@ -202,8 +203,15 @@
       const ans = document.getElementById('faq-' + i);
       const isOpen = ans.classList.contains('open');
       document.querySelectorAll('.faq-answer').forEach(el => el.classList.remove('open'));
-      document.querySelectorAll('.faq-question').forEach(el => el.classList.remove('open'));
-      if (!isOpen) { ans.classList.add('open'); btn.classList.add('open'); }
+      document.querySelectorAll('.faq-question').forEach(el => {
+        el.classList.remove('open');
+        el.setAttribute('aria-expanded', 'false');
+      });
+      if (!isOpen) {
+        ans.classList.add('open');
+        btn.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
     }
   </script>
 </body>
