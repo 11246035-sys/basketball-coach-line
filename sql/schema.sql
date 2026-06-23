@@ -118,18 +118,21 @@ ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
 -- Service Role 預設繞過 RLS，無需額外設定
 
 -- 允許匿名讀取課程紀錄和照片（LIFF 公開頁面）
+DROP POLICY IF EXISTS "公開讀取課程紀錄" ON records;
 CREATE POLICY "公開讀取課程紀錄" ON records
   FOR SELECT TO anon USING (true);
 
+DROP POLICY IF EXISTS "公開讀取照片" ON photos;
 CREATE POLICY "公開讀取照片" ON photos
   FOR SELECT TO anon USING (true);
 
 -- 允許匿名新增預約（LIFF 預約表單）
+DROP POLICY IF EXISTS "允許匿名新增預約" ON bookings;
 CREATE POLICY "允許匿名新增預約" ON bookings
   FOR INSERT TO anon WITH CHECK (true);
 
--- 允許讀取自己的預約（透過 line_user_id 識別）
--- 注意：這在前端需要額外驗證，後端 API 已處理
+-- 允許讀取預約
+DROP POLICY IF EXISTS "讀取自己的預約" ON bookings;
 CREATE POLICY "讀取自己的預約" ON bookings
   FOR SELECT TO anon USING (true);
 
@@ -150,12 +153,15 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- 允許公開讀取照片
-CREATE POLICY "公開讀取照片" ON storage.objects
+DROP POLICY IF EXISTS "公開讀取Storage照片" ON storage.objects;
+CREATE POLICY "公開讀取Storage照片" ON storage.objects
   FOR SELECT TO public USING (bucket_id = 'course-photos');
 
--- 只允許 Service Role 上傳（後台上傳）
+-- 只允許 Service Role 上傳與刪除（後台）
+DROP POLICY IF EXISTS "允許後台上傳照片" ON storage.objects;
 CREATE POLICY "允許後台上傳照片" ON storage.objects
   FOR INSERT TO authenticated USING (bucket_id = 'course-photos');
 
+DROP POLICY IF EXISTS "允許後台刪除照片" ON storage.objects;
 CREATE POLICY "允許後台刪除照片" ON storage.objects
   FOR DELETE TO authenticated USING (bucket_id = 'course-photos');

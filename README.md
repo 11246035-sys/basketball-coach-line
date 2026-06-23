@@ -2,6 +2,102 @@
 
 LINE 官方帳號籃球家教管理系統，支援線上預約、課程紀錄查閱、教練後台管理與自動推播通知。
 
+---
+
+## ⚡ 回來後要做的事（快速清單）
+
+> 按照以下順序完成，大約 30–45 分鐘可以全部跑通。
+
+### Step 1 — Supabase 建立資料庫
+
+1. 前往 [supabase.com](https://supabase.com) → 建立新專案
+2. 進入 **SQL Editor** → 貼入 `sql/schema.sql` 全部內容 → **Run**
+3. 進入 **Storage** → 確認 `course-photos` bucket 已建立且設為 Public
+4. 進入 **Settings > API** → 複製下列三個值備用：
+   - `Project URL` → `SUPABASE_URL`
+   - `anon public` key → `SUPABASE_ANON_KEY`
+   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY`
+
+### Step 2 — LINE Developers 設定
+
+1. 前往 [LINE Developers Console](https://developers.line.biz/) → 建立 **Messaging API** channel
+2. 複製備用：
+   - **Channel Secret** → `LINE_CHANNEL_SECRET`
+   - **Channel Access Token**（長期）→ `LINE_CHANNEL_ACCESS_TOKEN`
+3. 在 **LIFF** 頁籤建立三個 LIFF App（網址先填假的，部署後再改）：
+
+   | 名稱 | Size | Endpoint URL（暫填） |
+   |------|------|---------------------|
+   | 預約課程 | Full | `https://example.com/liff/booking.html` |
+   | 課程紀錄 | Full | `https://example.com/liff/records.html` |
+   | 上課須知 | Tall | `https://example.com/liff/notice.html` |
+
+4. 複製三個 LIFF ID 備用：
+   - `LINE_LIFF_ID_BOOKING`
+   - `LINE_LIFF_ID_RECORDS`
+   - `LINE_LIFF_ID_NOTICE`
+
+### Step 3 — Railway 部署
+
+1. 前往 [railway.app](https://railway.app) → **New Project > Deploy from GitHub repo** → 選此 repo
+2. 進入 **Variables** 頁面，填入以下所有環境變數：
+
+   ```
+   LINE_CHANNEL_ACCESS_TOKEN=
+   LINE_CHANNEL_SECRET=
+   LINE_LIFF_ID_BOOKING=
+   LINE_LIFF_ID_RECORDS=
+   LINE_LIFF_ID_NOTICE=
+   SUPABASE_URL=
+   SUPABASE_ANON_KEY=
+   SUPABASE_SERVICE_ROLE_KEY=
+   ADMIN_PASSWORD=（自訂後台密碼）
+   SESSION_SECRET=（執行 openssl rand -base64 32 取得）
+   BASE_URL=（部署後 Railway 給的網址，例如 https://xxx.railway.app）
+   ```
+
+3. 等部署完成 → 複製 Railway 網址 → 填入 `BASE_URL`
+4. 確認 `https://你的網址/health` 回傳 `{"status":"ok"}`
+
+### Step 4 — 更新 LIFF Endpoint URL
+
+1. 回到 LINE Developers Console → LIFF 頁籤
+2. 將三個 LIFF App 的 Endpoint URL 改為 Railway 真實網址：
+   - 預約課程：`https://你的網址/liff/booking.html`
+   - 課程紀錄：`https://你的網址/liff/records.html`
+   - 上課須知：`https://你的網址/liff/notice.html`
+
+### Step 5 — 設定 LINE Webhook
+
+1. LINE Developers Console → Messaging API → **Webhook URL** 填入：
+   `https://你的網址/webhook`
+2. 點 **Verify** → 應出現 ✅ 成功
+3. 開啟 **Use webhook**
+4. 關閉「Auto-reply messages」和「Greeting messages」
+
+### Step 6 — 上傳 Rich Menu
+
+1. 準備 **2500 × 843 px** PNG 圖片（三格：左預約、中須知、右紀錄）
+2. 存為 `richmenu/richmenu-image.png`
+3. 執行：
+   ```bash
+   cp .env.example .env
+   # 編輯 .env 填入所有值
+   ./setup.sh
+   ```
+
+### Step 7 — 驗證一切正常
+
+- [ ] LINE 掃 QR 加好友 → 收到歡迎訊息
+- [ ] 底部 Rich Menu 正常顯示
+- [ ] 點「預約課程」→ LIFF 頁面開啟
+- [ ] 填表送出 → 收到 LINE 確認訊息
+- [ ] 開後台 `https://你的網址/admin/index.html` → 登入成功
+- [ ] 後台確認預約 → 家長收到 LINE 通知
+- [ ] 後台上傳課程紀錄 → 家長收到 LINE 通知
+
+---
+
 ## 功能特色
 
 - 📅 **LIFF 預約表單**：家長在 LINE 內直接填寫預約
