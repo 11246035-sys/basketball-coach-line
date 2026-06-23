@@ -92,6 +92,11 @@ async function handleMessage(event) {
       text: '請點選下方選單的「📸 課程紀錄」按鈕查看紀錄！'
     });
   }
+
+  // 非指令訊息：一律給予預設回覆，確保任何用戶（含新用戶）都有回應
+  return replyMessage(event.replyToken, textMessage(
+    `感謝您的訊息！教練會盡快回覆您 🏀\n您也可以使用下方選單快速預約課程或查看紀錄。`
+  ));
 }
 
 /**
@@ -99,14 +104,11 @@ async function handleMessage(event) {
  */
 async function handleFollow(event) {
   const welcomeText = `🏀 歡迎加入籃球家教！
-
-感謝您的關注！以下是快速導覽：
-
-📅 預約課程 → 點選下方選單預約上課時間
-📋 上課須知 → 了解上課地點、費用與注意事項
-📸 課程紀錄 → 查看歷次上課照片與紀錄
-
-如有任何問題，歡迎直接留言詢問！`;
+請使用下方選單開始使用：
+📅 預約課程 - 填寫預約表單
+📋 上課須知 - 查看課程相關資訊
+📸 課程紀錄 - 查看上課照片與紀錄
+如有任何問題請直接留言，教練會盡快回覆！`;
 
   return replyMessage(event.replyToken, textMessage(welcomeText));
 }

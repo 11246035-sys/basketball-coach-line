@@ -6,9 +6,44 @@
   <title>預約課程</title>
   <link rel="stylesheet" href="/assets/css/common.css">
   <script src="/config.js"></script>
-  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
+    :root {
+      --brand: #FF6B00;
+      --brand-dark: #e85f00;
+      --brand-light: #fff3eb;
+    }
+    body { background: #fff8f3; }
+    .page-header {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
+      color: #fff;
+      padding: 24px 16px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
+    .page-header .ball {
+      position: absolute;
+      font-size: 120px;
+      opacity: 0.15;
+      right: -20px;
+      top: -20px;
+      transform: rotate(-15deg);
+    }
+    .notice-tip {
+      background: var(--brand-light);
+      border-left: 4px solid var(--brand);
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #7a3e00;
+      line-height: 1.7;
+    }
+    .notice-tip strong { color: var(--brand-dark); }
     .session-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -21,29 +56,91 @@
       align-items: center;
       padding: 12px 8px;
       border: 2px solid var(--gray-200);
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
       transition: all 0.2s;
       text-align: center;
     }
     .session-option input[type="radio"] { display: none; }
     .session-option.selected {
-      border-color: var(--orange);
-      background: #fff7ed;
+      border-color: var(--brand);
+      background: var(--brand-light);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255,107,0,0.2);
     }
     .session-option .icon { font-size: 24px; margin-bottom: 4px; }
-    .session-option .label { font-size: 13px; font-weight: 600; }
+    .session-option .label { font-size: 13px; font-weight: 700; }
     .session-option .time { font-size: 11px; color: var(--gray-600); }
+    .form-group input:focus,
+    .form-group textarea:focus { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); }
+    .btn-primary:hover { background: var(--brand-dark); }
+    /* 成功動畫 */
+    .success-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.97);
+      z-index: 2000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .success-overlay.active { display: flex; }
+    .checkmark-circle {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      animation: pop 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .checkmark-circle svg { width: 50px; height: 50px; }
+    .checkmark-circle svg path {
+      stroke: #fff;
+      stroke-width: 6;
+      fill: none;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: draw 0.5s 0.3s forwards ease-out;
+    }
+    @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    .success-overlay h2 { font-size: 22px; color: var(--brand-dark); margin-bottom: 10px; }
+    .success-overlay .detail {
+      background: var(--brand-light);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-size: 14px;
+      color: #5c3000;
+      line-height: 1.9;
+      margin-top: 8px;
+    }
+    .success-overlay .hint { font-size: 12px; color: #9ca3af; margin-top: 16px; }
   </style>
 </head>
 <body>
   <header class="page-header">
+    <span class="ball">🏀</span>
     <h1>📅 預約課程</h1>
+    <div class="subtitle">填寫資料，輕鬆預約籃球課程</div>
   </header>
 
   <div class="container">
     <div id="loading" class="loading">初始化中...</div>
     <div id="main" style="display:none">
+      <div class="notice-tip">
+        <strong>📌 預約須知</strong><br>
+        • 請於上課<strong>前 3 天</strong>提出預約，方便教練安排<br>
+        • 送出後教練會審核，並透過 <strong>LINE 通知</strong>您結果<br>
+        • 如需取消或改期，請提前 <strong>24 小時</strong>告知
+      </div>
+
       <div class="card">
         <form id="bookingForm">
           <div class="form-group">
@@ -88,30 +185,40 @@
           <div id="alertBox"></div>
 
           <button type="submit" class="btn btn-primary" id="submitBtn">
-            📅 送出預約
+            🏀 送出預約
           </button>
         </form>
       </div>
     </div>
   </div>
 
+  <!-- 成功動畫 -->
+  <div class="success-overlay" id="successOverlay">
+    <div class="checkmark-circle">
+      <svg viewBox="0 0 60 60"><path d="M14 30 L26 42 L46 18"/></svg>
+    </div>
+    <h2>預約成功！</h2>
+    <p style="color:#6b7280;font-size:14px">教練確認後將透過 LINE 通知您</p>
+    <div class="detail" id="successDetail"></div>
+    <div class="hint">視窗將自動關閉…</div>
+  </div>
+
   <script>
     let lineUserId = null;
 
-    // 設定日期最小值為今天
     document.getElementById('date').min = new Date().toISOString().split('T')[0];
-    // 預設選擇三天後
     const defaultDate = new Date();
     defaultDate.setDate(defaultDate.getDate() + 3);
     document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
 
-    // 時段選項點擊效果
     document.querySelectorAll('.session-option').forEach(el => {
       el.addEventListener('click', () => {
         document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
         el.classList.add('selected');
       });
     });
+
+    const SESSION_LABEL = { morning: '早上 09:00-12:00', afternoon: '下午 13:00-17:00', evening: '晚上 18:00-21:00' };
 
     async function init() {
       try {
@@ -161,19 +268,19 @@
         const data = await res.json();
 
         if (res.ok) {
-          showAlert('success', '✅ 預約成功！教練確認後會透過 LINE 通知您。');
-          document.getElementById('bookingForm').reset();
-          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-          document.getElementById('date').value = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
-          setTimeout(() => liff.closeWindow(), 3000);
+          document.getElementById('successDetail').innerHTML =
+            `👤 ${studentName}<br>📅 ${date}<br>⏰ ${SESSION_LABEL[session]}`;
+          document.getElementById('successOverlay').classList.add('active');
+          setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 3500);
         } else {
           showAlert('error', data.error || '預約失敗，請稍後再試');
+          btn.disabled = false;
+          btn.textContent = '🏀 送出預約';
         }
       } catch (err) {
         showAlert('error', '網路錯誤，請稍後再試');
-      } finally {
         btn.disabled = false;
-        btn.textContent = '📅 送出預約';
+        btn.textContent = '🏀 送出預約';
       }
     });
 

@@ -8,6 +8,55 @@
   <script src="/config.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
+    :root {
+      --brand: #FF6B00;
+      --brand-dark: #e85f00;
+      --brand-light: #fff3eb;
+    }
+    body { background: #fff8f3; }
+    .page-header {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
+      color: #fff;
+      padding: 24px 16px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
+    .page-header .ball {
+      position: absolute;
+      font-size: 120px;
+      opacity: 0.15;
+      right: -20px;
+      top: -20px;
+      transform: rotate(-15deg);
+    }
+    .filter-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .filter-box input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid var(--gray-200);
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .filter-box input:focus { border-color: var(--brand); }
+    .filter-box button {
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
     .record-card {
       background: #fff;
       border-radius: var(--radius);
@@ -18,6 +67,17 @@
     .record-header {
       padding: 14px 16px;
       border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .record-header .avatar {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--brand-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
     }
     .record-date { font-weight: 700; font-size: 16px; }
     .record-student { font-size: 13px; color: var(--gray-600); margin-top: 2px; }
@@ -46,12 +106,24 @@
       color: var(--gray-600);
       line-height: 1.6;
     }
+    .empty {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--gray-600);
+    }
+    .empty .empty-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.7;
+    }
+    .empty h3 { font-size: 17px; color: #4b5563; margin-bottom: 8px; }
+    .empty p { font-size: 13px; color: #9ca3af; }
     /* 全螢幕預覽 */
     .lightbox {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.9);
+      background: rgba(0,0,0,0.92);
       z-index: 1000;
       justify-content: center;
       align-items: center;
@@ -76,16 +148,23 @@
 </head>
 <body>
   <header class="page-header">
+    <span class="ball">🏀</span>
     <h1>📸 課程紀錄</h1>
+    <div class="subtitle">回顧每一堂課的精彩瞬間</div>
   </header>
 
   <div class="container">
+    <div class="filter-box">
+      <input type="text" id="nameFilter" placeholder="🔍 輸入學生姓名篩選" />
+      <button id="filterBtn">篩選</button>
+    </div>
+
     <div id="loading" class="loading">載入中...</div>
     <div id="records"></div>
     <div id="empty" class="empty" style="display:none">
       <div class="empty-icon">📷</div>
-      <p>目前還沒有課程紀錄</p>
-      <p style="font-size:13px;margin-top:8px;color:#9ca3af">上完課後教練會上傳照片與紀錄</p>
+      <h3>目前還沒有課程紀錄</h3>
+      <p>上完課後教練會上傳照片與紀錄，敬請期待！</p>
     </div>
     <div id="loadMore" style="display:none;text-align:center;padding:16px">
       <button class="btn btn-outline" id="loadMoreBtn" style="width:auto;padding:8px 24px">載入更多</button>
@@ -102,7 +181,7 @@
     let lineUserId = null;
     let offset = 0;
     const limit = 10;
-    let total = 0;
+    let nameKeyword = '';
 
     async function init() {
       try {
@@ -119,6 +198,20 @@
       }
     }
 
+    function resetAndReload() {
+      offset = 0;
+      nameKeyword = document.getElementById('nameFilter').value.trim();
+      document.getElementById('records').innerHTML = '';
+      document.getElementById('empty').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+      loadRecords();
+    }
+
+    document.getElementById('filterBtn').addEventListener('click', resetAndReload);
+    document.getElementById('nameFilter').addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') resetAndReload();
+    });
+
     async function loadRecords(append = false) {
       try {
         const params = new URLSearchParams({ limit, offset });
@@ -126,12 +219,18 @@
 
         const res = await fetch(`/api/records?${params}`);
         const data = await res.json();
-        const records = data.records || [];
+        let records = data.records || [];
+
+        // 前端依學生姓名篩選
+        if (nameKeyword) {
+          records = records.filter(r => (r.student_name || '').includes(nameKeyword));
+        }
 
         document.getElementById('loading').style.display = 'none';
 
-        if (records.length === 0 && !append) {
+        if (records.length === 0 && offset === 0) {
           document.getElementById('empty').style.display = 'block';
+          document.getElementById('loadMore').style.display = 'none';
           return;
         }
 
@@ -140,8 +239,8 @@
           container.insertAdjacentHTML('beforeend', renderRecord(record));
         });
 
-        offset += records.length;
-        if (records.length === limit) {
+        offset += (data.records || []).length;
+        if ((data.records || []).length === limit) {
           document.getElementById('loadMore').style.display = 'block';
         } else {
           document.getElementById('loadMore').style.display = 'none';
@@ -159,7 +258,7 @@
         const gridClass = photos.length === 1 ? 'single' : photos.length === 2 ? 'double' : '';
         const displayPhotos = photos.slice(0, 6);
         photoHtml = `<div class="photo-grid ${gridClass}">
-          ${displayPhotos.map((p, i) => `
+          ${displayPhotos.map(p => `
             <div class="photo-item" onclick="openLightbox('${p.url}')">
               <img src="${p.thumbnail_url || p.url}" alt="課程照片" loading="lazy">
             </div>
@@ -170,8 +269,11 @@
       return `
         <div class="record-card">
           <div class="record-header">
-            <div class="record-date">📅 ${record.date}</div>
-            <div class="record-student">👤 ${record.student_name || ''}</div>
+            <div class="avatar">🏀</div>
+            <div>
+              <div class="record-date">${record.date}</div>
+              <div class="record-student">👤 ${record.student_name || ''}</div>
+            </div>
           </div>
           ${photoHtml}
           ${record.description ? `<div class="record-desc">${escHtml(record.description)}</div>` : ''}
