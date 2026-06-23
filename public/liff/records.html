@@ -8,141 +8,58 @@
   <script src="/config.js"></script>
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
-    :root {
-      --brand: #FF6B00;
-      --brand-dark: #e85f00;
-      --brand-light: #fff3eb;
-    }
+    :root { --brand: #FF6B00; --brand-dark: #e85f00; --brand-light: #fff3eb; }
     body { background: #fff8f3; }
     .page-header {
       background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
-      color: #fff;
-      padding: 24px 16px 20px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      margin-bottom: 16px;
+      color: #fff; padding: 24px 16px 20px; text-align: center;
+      position: relative; overflow: hidden; margin-bottom: 16px;
     }
     .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
     .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
-    .page-header .ball {
-      position: absolute;
-      font-size: 120px;
-      opacity: 0.15;
-      right: -20px;
-      top: -20px;
-      transform: rotate(-15deg);
+    .page-header .ball { position: absolute; font-size: 120px; opacity: 0.15; right: -20px; top: -20px; transform: rotate(-15deg); }
+    .filter-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .filter-box select {
+      flex: 1; padding: 10px 14px; border: 1.5px solid var(--gray-200);
+      border-radius: 10px; font-size: 14px; outline: none; font-family: inherit;
+      background: #fff; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center;
     }
-    .filter-box {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
+    .filter-box select:focus { border-color: var(--brand); }
+    .sample-badge {
+      display: inline-block; background: #fef3c7; color: #92400e;
+      font-size: 11px; font-weight: 700; padding: 2px 8px;
+      border-radius: 999px; margin-left: 6px; vertical-align: middle;
     }
-    .filter-box input {
-      flex: 1;
-      padding: 10px 14px;
-      border: 1.5px solid var(--gray-200);
-      border-radius: 10px;
-      font-size: 14px;
-      outline: none;
-    }
-    .filter-box input:focus { border-color: var(--brand); }
-    .filter-box button {
-      background: var(--brand);
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 0 18px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .record-card {
-      background: #fff;
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow);
-      margin-bottom: 20px;
-    }
-    .record-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--gray-200);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    .record-card { background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .record-header { padding: 14px 16px; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; gap: 10px; }
     .record-header .avatar {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      background: var(--brand-light);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--brand-light); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
     }
     .record-date { font-weight: 700; font-size: 16px; }
     .record-student { font-size: 13px; color: var(--gray-600); margin-top: 2px; }
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
-    }
+    .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
     .photo-grid.single { grid-template-columns: 1fr; }
     .photo-grid.double { grid-template-columns: 1fr 1fr; }
-    .photo-item {
-      aspect-ratio: 1;
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .photo-item img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.2s;
-    }
+    .photo-item { aspect-ratio: 1; overflow: hidden; cursor: pointer; }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
     .photo-item img:hover { transform: scale(1.05); }
-    .record-desc {
-      padding: 12px 16px;
-      font-size: 14px;
-      color: var(--gray-600);
-      line-height: 1.6;
-    }
-    .empty {
-      text-align: center;
-      padding: 60px 24px;
-      color: var(--gray-600);
-    }
-    .empty .empty-icon {
-      font-size: 64px;
-      margin-bottom: 16px;
-      opacity: 0.7;
-    }
+    .record-desc { padding: 12px 16px; font-size: 14px; color: var(--gray-600); line-height: 1.6; }
+    .empty { text-align: center; padding: 60px 24px; color: var(--gray-600); }
+    .empty .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.7; }
     .empty h3 { font-size: 17px; color: #4b5563; margin-bottom: 8px; }
     .empty p { font-size: 13px; color: #9ca3af; }
-    /* 全螢幕預覽 */
-    .lightbox {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.92);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; justify-content: center; align-items: center; }
     .lightbox.active { display: flex; }
-    .lightbox img {
-      max-width: 95vw;
-      max-height: 90vh;
-      object-fit: contain;
-    }
-    .lightbox-close {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      color: #fff;
-      font-size: 32px;
-      cursor: pointer;
-      background: none;
-      border: none;
+    .lightbox img { max-width: 95vw; max-height: 90vh; object-fit: contain; }
+    .lightbox-close { position: absolute; top: 16px; right: 16px; color: #fff; font-size: 32px; cursor: pointer; background: none; border: none; }
+    .sample-notice {
+      background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 16px; font-size: 13px; color: #92400e;
+      display: flex; align-items: center; gap: 8px;
     }
   </style>
 </head>
@@ -155,33 +72,77 @@
 
   <div class="container">
     <div class="filter-box">
-      <input type="text" id="nameFilter" placeholder="🔍 輸入學生姓名篩選" />
-      <button id="filterBtn">篩選</button>
+      <select id="nameFilter" onchange="filterRecords()">
+        <option value="">🔍 全部學生</option>
+      </select>
     </div>
 
     <div id="loading" class="loading">載入中...</div>
+    <div id="sampleNotice" class="sample-notice" style="display:none">
+      ⚠️ 目前顯示的是範例資料，實際上課後將由教練上傳真實紀錄。
+    </div>
     <div id="records"></div>
     <div id="empty" class="empty" style="display:none">
       <div class="empty-icon">📷</div>
-      <h3>目前還沒有課程紀錄</h3>
-      <p>上完課後教練會上傳照片與紀錄，敬請期待！</p>
+      <h3>找不到相關紀錄</h3>
+      <p>請嘗試選擇其他學生，或等待教練上傳課程紀錄。</p>
     </div>
     <div id="loadMore" style="display:none;text-align:center;padding:16px">
       <button class="btn btn-outline" id="loadMoreBtn" style="width:auto;padding:8px 24px">載入更多</button>
     </div>
   </div>
 
-  <!-- 圖片全螢幕預覽 -->
   <div class="lightbox" id="lightbox">
     <button class="lightbox-close" onclick="closeLightbox()">✕</button>
     <img id="lightboxImg" src="" alt="">
   </div>
 
   <script>
+    // ── 假資料（範例）──────────────────────────────────────────────
+    // 當後端沒有資料時顯示，方便預覽效果。
+    // 要移除假資料：刪除下方 SAMPLE_RECORDS 陣列，並在 loadRecords() 中移除 usingSample 邏輯。
+    const SAMPLE_RECORDS = [
+      {
+        id: 'sample-1',
+        date: '2026/06/20',
+        student_name: '王小明',
+        description: '今天練習基礎運球與三分線投籃，小明的投籃姿勢進步很多，命中率明顯提升！下次加強左手上籃。',
+        photos: [
+          { url: 'https://placehold.co/400x400/FF6B00/white?text=照片1', thumbnail_url: 'https://placehold.co/400x400/FF6B00/white?text=照片1' },
+          { url: 'https://placehold.co/400x400/e85f00/white?text=照片2', thumbnail_url: 'https://placehold.co/400x400/e85f00/white?text=照片2' },
+          { url: 'https://placehold.co/400x400/ff8c38/white?text=照片3', thumbnail_url: 'https://placehold.co/400x400/ff8c38/white?text=照片3' }
+        ],
+        _isSample: true
+      },
+      {
+        id: 'sample-2',
+        date: '2026/06/18',
+        student_name: '陳大華',
+        description: '防守腳步訓練 + 實戰對抗，大華的反應速度很好，繼續保持！',
+        photos: [
+          { url: 'https://placehold.co/400x400/FF6B00/white?text=照片1', thumbnail_url: 'https://placehold.co/400x400/FF6B00/white?text=照片1' },
+          { url: 'https://placehold.co/400x400/e85f00/white?text=照片2', thumbnail_url: 'https://placehold.co/400x400/e85f00/white?text=照片2' }
+        ],
+        _isSample: true
+      },
+      {
+        id: 'sample-3',
+        date: '2026/06/15',
+        student_name: '林小美',
+        description: '第一次上課，從基礎持球與運球開始，小美學習態度認真，期待後續進步。',
+        photos: [
+          { url: 'https://placehold.co/400x400/FF6B00/white?text=照片1', thumbnail_url: 'https://placehold.co/400x400/FF6B00/white?text=照片1' }
+        ],
+        _isSample: true
+      }
+    ];
+    // ──────────────────────────────────────────────────────────────
+
     let lineUserId = null;
     let offset = 0;
     const limit = 10;
-    let nameKeyword = '';
+    let allRecords = [];
+    let selectedName = '';
 
     async function init() {
       try {
@@ -198,20 +159,6 @@
       }
     }
 
-    function resetAndReload() {
-      offset = 0;
-      nameKeyword = document.getElementById('nameFilter').value.trim();
-      document.getElementById('records').innerHTML = '';
-      document.getElementById('empty').style.display = 'none';
-      document.getElementById('loading').style.display = 'block';
-      loadRecords();
-    }
-
-    document.getElementById('filterBtn').addEventListener('click', resetAndReload);
-    document.getElementById('nameFilter').addEventListener('keyup', (e) => {
-      if (e.key === 'Enter') resetAndReload();
-    });
-
     async function loadRecords(append = false) {
       try {
         const params = new URLSearchParams({ limit, offset });
@@ -221,34 +168,57 @@
         const data = await res.json();
         let records = data.records || [];
 
-        // 前端依學生姓名篩選
-        if (nameKeyword) {
-          records = records.filter(r => (r.student_name || '').includes(nameKeyword));
-        }
-
         document.getElementById('loading').style.display = 'none';
 
+        let usingSample = false;
         if (records.length === 0 && offset === 0) {
-          document.getElementById('empty').style.display = 'block';
-          document.getElementById('loadMore').style.display = 'none';
-          return;
+          records = SAMPLE_RECORDS;
+          usingSample = true;
         }
 
-        const container = document.getElementById('records');
-        records.forEach(record => {
-          container.insertAdjacentHTML('beforeend', renderRecord(record));
-        });
+        if (!append) allRecords = records;
+        else allRecords = [...allRecords, ...records];
+
+        // 建立姓名篩選下拉選單
+        const names = [...new Set(allRecords.map(r => r.student_name).filter(Boolean))];
+        const sel = document.getElementById('nameFilter');
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">🔍 全部學生</option>';
+        names.forEach(n => sel.insertAdjacentHTML('beforeend', `<option value="${n}"${n===currentVal?' selected':''}>${n}</option>`));
+
+        document.getElementById('sampleNotice').style.display = usingSample ? 'flex' : 'none';
+
+        renderRecords();
 
         offset += (data.records || []).length;
-        if ((data.records || []).length === limit) {
-          document.getElementById('loadMore').style.display = 'block';
-        } else {
-          document.getElementById('loadMore').style.display = 'none';
-        }
+        document.getElementById('loadMore').style.display =
+          !usingSample && (data.records || []).length === limit ? 'block' : 'none';
+
       } catch (err) {
         console.error('載入失敗:', err);
         document.getElementById('loading').innerHTML = '❌ 載入失敗';
       }
+    }
+
+    function filterRecords() {
+      selectedName = document.getElementById('nameFilter').value;
+      renderRecords();
+    }
+
+    function renderRecords() {
+      const filtered = selectedName
+        ? allRecords.filter(r => r.student_name === selectedName)
+        : allRecords;
+
+      const container = document.getElementById('records');
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        document.getElementById('empty').style.display = 'block';
+        return;
+      }
+      document.getElementById('empty').style.display = 'none';
+      filtered.forEach(record => container.insertAdjacentHTML('beforeend', renderRecord(record)));
     }
 
     function renderRecord(record) {
@@ -256,22 +226,21 @@
       let photoHtml = '';
       if (photos.length > 0) {
         const gridClass = photos.length === 1 ? 'single' : photos.length === 2 ? 'double' : '';
-        const displayPhotos = photos.slice(0, 6);
         photoHtml = `<div class="photo-grid ${gridClass}">
-          ${displayPhotos.map(p => `
+          ${photos.slice(0, 6).map(p => `
             <div class="photo-item" onclick="openLightbox('${p.url}')">
               <img src="${p.thumbnail_url || p.url}" alt="課程照片" loading="lazy">
             </div>
           `).join('')}
         </div>`;
       }
-
+      const sampleBadge = record._isSample ? '<span class="sample-badge">範例</span>' : '';
       return `
         <div class="record-card">
           <div class="record-header">
             <div class="avatar">🏀</div>
             <div>
-              <div class="record-date">${record.date}</div>
+              <div class="record-date">${record.date}${sampleBadge}</div>
               <div class="record-student">👤 ${record.student_name || ''}</div>
             </div>
           </div>

@@ -11,16 +11,17 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const { line_user_id, student_name, date, session, notes } = req.body;
+    const { line_user_id, student_name, date, session, location, notes } = req.body;
 
     // 基本驗證
     if (!line_user_id || !student_name || !date || !session) {
       return res.status(400).json({ error: '請填寫完整資料（姓名、日期、時段為必填）' });
     }
 
-    // 驗證時段
-    const validSessions = ['morning', 'afternoon', 'evening'];
-    if (!validSessions.includes(session)) {
+    // 驗證時段：接受舊格式（morning/afternoon/evening）或新格式（HH:MM）
+    const validLegacySessions = ['morning', 'afternoon', 'evening'];
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!validLegacySessions.includes(session) && !timeRegex.test(session)) {
       return res.status(400).json({ error: '無效的時段選擇' });
     }
 
@@ -39,7 +40,7 @@ router.post('/', async (req, res) => {
     // 寫入資料庫
     const { data, error } = await supabase
       .from('bookings')
-      .insert([{ line_user_id, student_name, date, session, notes: notes || null, status: 'pending' }])
+      .insert([{ line_user_id, student_name, date, session, location: location || null, notes: notes || null, status: 'pending' }])
       .select()
       .single();
 
@@ -51,8 +52,9 @@ router.post('/', async (req, res) => {
     console.log(`[Bookings] 新預約: ${student_name}，日期: ${date}，時段: ${session}`);
 
     // 自動回覆確認訊息給家長
+    const locationLine = location ? `\n地點：${location}` : '';
     await pushMessage(line_user_id, textMessage(
-      `✅ 已收到您的預約申請！\n\n學生：${student_name}\n日期：${date}\n時段：${getSessionLabel(session)}\n\n教練確認後會再通知您，請耐心等候。`
+      `✅ 已收到您的預約申請！\n\n學生：${student_name}\n日期：${date}\n時段：${getSessionLabel(session)}${locationLine}\n\n教練確認後會再通知您，請耐心等候。`
     )).catch(err => console.error('[Bookings] 發送確認訊息失敗:', err.message));
 
     res.json({ success: true, booking: data });
@@ -164,8 +166,11 @@ router.get('/my/:lineUserId', async (req, res) => {
 });
 
 function getSessionLabel(session) {
-  const map = { morning: '早上 (09:00-12:00)', afternoon: '下午 (13:00-17:00)', evening: '晚上 (18:00-21:00)' };
-  return map[session] || session;
+  const map = { morning: '早上', afternoon: '下午', evening: '晚上' };
+  if (map[session]) return map[session];
+  // HH:MM 格式：顯示起訖時間
+  const h = parseInt(session.split(':')[0]);
+  return `${session}–${String(h + 1).padStart(2,'0')}:00`;
 }
 
 module.exports = router;
