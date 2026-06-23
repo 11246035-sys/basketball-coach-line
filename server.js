@@ -13,6 +13,9 @@ const adminRouter = require('./src/routes/admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway/Render 等平台使用 reverse proxy，需信任 proxy 才能正確處理 secure cookie
+app.set('trust proxy', 1);
+
 // CORS 設定（允許 LIFF 頁面跨域請求）
 app.use(cors({
   origin: true,
@@ -27,7 +30,8 @@ app.use(session({
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24小時
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
