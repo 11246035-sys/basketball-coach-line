@@ -11,7 +11,12 @@ const router = express.Router();
  */
 router.post('/', async (req, res) => {
   try {
-    const { line_user_id, student_name, date, session, location, notes } = req.body;
+    const line_user_id = req.body.line_user_id?.trim();
+    const student_name = req.body.student_name?.trim();
+    const date = req.body.date?.trim();
+    const session = req.body.session?.trim();
+    const location = req.body.location?.trim() || null;
+    const notes = req.body.notes?.trim() || null;
 
     // 基本驗證
     if (!line_user_id || !student_name || !date || !session) {
@@ -40,7 +45,7 @@ router.post('/', async (req, res) => {
     // 寫入資料庫
     const { data, error } = await supabase
       .from('bookings')
-      .insert([{ line_user_id, student_name, date, session, location: location || null, notes: notes || null, status: 'pending' }])
+      .insert([{ line_user_id, student_name, date, session, location, notes, status: 'pending' }])
       .select()
       .single();
 

@@ -29,7 +29,11 @@ router.get('/', requireAdmin, async (req, res) => {
  */
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { name, line_user_id, parent_name, phone, notes } = req.body;
+    const name = req.body.name?.trim();
+    const line_user_id = req.body.line_user_id?.trim() || null;
+    const parent_name = req.body.parent_name?.trim() || null;
+    const phone = req.body.phone?.trim() || null;
+    const notes = req.body.notes?.trim() || null;
 
     if (!name) {
       return res.status(400).json({ error: '學生姓名為必填' });
@@ -37,7 +41,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
     const { data, error } = await supabase
       .from('students')
-      .insert([{ name, line_user_id: line_user_id || null, parent_name: parent_name || null, phone: phone || null, notes: notes || null }])
+      .insert([{ name, line_user_id, parent_name, phone, notes }])
       .select()
       .single();
 
@@ -65,11 +69,11 @@ router.patch('/:id', requireAdmin, async (req, res) => {
     const { name, line_user_id, parent_name, phone, notes } = req.body;
 
     const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (line_user_id !== undefined) updates.line_user_id = line_user_id;
-    if (parent_name !== undefined) updates.parent_name = parent_name;
-    if (phone !== undefined) updates.phone = phone;
-    if (notes !== undefined) updates.notes = notes;
+    if (name !== undefined) updates.name = name?.trim();
+    if (line_user_id !== undefined) updates.line_user_id = line_user_id?.trim() || null;
+    if (parent_name !== undefined) updates.parent_name = parent_name?.trim() || null;
+    if (phone !== undefined) updates.phone = phone?.trim() || null;
+    if (notes !== undefined) updates.notes = notes?.trim() || null;
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase
