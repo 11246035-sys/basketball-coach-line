@@ -1,5 +1,6 @@
 const line = require('@line/bot-sdk');
 
+// lineConfig 同時用於 Webhook 簽章驗證與 Messaging API 呼叫
 const lineConfig = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.LINE_CHANNEL_SECRET
@@ -60,7 +61,8 @@ function flexMessage(altText, contents) {
 }
 
 /**
- * 建立預約確認通知的 Flex 卡片
+ * 建立預約確認通知的 Flex 卡片（橘色主題）
+ * 教練在後台「確認」預約後，自動 push 給家長
  */
 function bookingConfirmFlex(booking) {
   const sessionMap = { morning: '早上 (09:00-12:00)', afternoon: '下午 (13:00-17:00)', evening: '晚上 (18:00-21:00)' };
@@ -104,7 +106,8 @@ function bookingConfirmFlex(booking) {
 }
 
 /**
- * 建立新課程紀錄通知的 Flex 卡片
+ * 建立新課程紀錄通知的 Flex 卡片（藍色主題，附照片 Hero）
+ * 教練上傳課程紀錄後，自動 push 給家長；photoUrl 可為 null
  */
 function newRecordFlex(record, photoUrl) {
   const contents = [
