@@ -35,6 +35,17 @@ app.use(session({
   }
 }));
 
+// 請求日誌（排除 webhook 路由避免 body 洩漏 LINE 簽章資料）
+app.use((req, res, next) => {
+  if (req.path === '/webhook') return next();
+  const start = Date.now();
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    console.log(`[${req.method}] ${req.path} → ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
+
 // LINE Webhook 必須在 express.json() 之前，因為需要原始 body 來驗簽
 app.use('/webhook', webhookRouter);
 
