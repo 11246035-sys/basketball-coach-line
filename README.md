@@ -303,7 +303,7 @@ basketball-coach-line/
 |------|------|
 | POST | `/webhook` - LINE 事件接收端點 |
 
-## 常見問題
+## 常見問題排除
 
 **Q: Webhook Verify 失敗？**
 A: 確認 `LINE_CHANNEL_SECRET` 正確，且 Railway 已成功部署（可用 `/health` 確認）。
@@ -316,3 +316,70 @@ A: 確認 `LINE_CHANNEL_ACCESS_TOKEN` 正確，且使用者已加入官方帳號
 
 **Q: 圖片上傳後無法顯示？**
 A: 確認 Supabase Storage `course-photos` bucket 設定為 Public，且 `SUPABASE_SERVICE_ROLE_KEY` 填寫正確。
+
+**Q: 後台登入後立刻跳回登入頁？**
+A: JWT Token 存在 localStorage。請確認瀏覽器未開啟無痕模式（無痕模式不允許 localStorage）。
+
+**Q: Railway 部署後出現 `Cannot find module 'express-rate-limit'`？**
+A: 在 Railway Variables 確認有設定 `NODE_ENV=production`，然後重新部署一次讓 npm install 安裝新依賴。
+
+**Q: 預約送出後家長沒收到 LINE 確認訊息？**
+A: Push Message 是非阻塞的（.catch 吞錯誤），請查看 Railway 部署日誌，搜尋 `[Bookings] 發送確認訊息失敗`。
+
+**Q: 課程紀錄頁只顯示「範例」資料？**
+A: 這是正常的，表示後端 `/api/records` 回傳空陣列。請在後台新增至少一筆課程紀錄，範例資料就會自動消失。
+
+---
+
+## 日常維護說明
+
+### 更換 LINE Channel Access Token
+
+1. 前往 LINE Developers Console → Messaging API → 重新發行 Access Token
+2. 到 Railway Variables 更新 `LINE_CHANNEL_ACCESS_TOKEN`
+3. Railway 會自動重新部署，無需手動重啟
+
+### 新增課程時段
+
+目前可用時段在兩處定義，兩者需同步修改：
+
+1. **前端**：`public/liff/booking.html` 中的 `PERIODS` 物件
+2. **後端**：`src/routes/bookings.js` 中的 `timeRegex` 仍會接受任何 HH:MM 格式，無需修改
+
+### 更換 Rich Menu 圖片
+
+```bash
+# 建立新 Rich Menu 並上傳圖片
+curl -X POST "https://api.line.me/v2/bot/richmenu" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @richmenu/richmenu.json
+
+# 設定為預設選單（替換 RICHMENU_ID）
+curl -X POST "https://api.line.me/v2/bot/user/all/richmenu/RICHMENU_ID" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Length: 0"
+```
+
+### 監控請求日誌
+
+Railway 部署後可在 Logs 頁面即時查看：
+- `[GET] /api/records → 200 (45ms)` — 正常請求
+- `[POST] /api/bookings → 429` — 觸發 rate limit（正常防護）
+- `[Bookings] 新預約: 王小明，日期: 2026-07-01，時段: 10:00` — 新預約
+- `[LINE] Push Message 失敗` — 需要排查 LINE Token
+
+---
+
+## 未來擴充建議
+
+| 功能 | 說明 | 難度 |
+|------|------|------|
+| 課程費用管理 | 在後台新增費率設定，自動計算月結帳單 | 中 |
+| 行事曆整合 | 將確認預約同步至 Google Calendar | 中 |
+| 預約衝突偵測 | 後端檢查同一時段是否已有預約 | 低 |
+| 家長評分回饋 | 課後自動發送評分 Flex Message，收集 1-5 星評價 | 中 |
+| 多教練支援 | 新增 `coach_id` 欄位，支援多位教練共用系統 | 高 |
+| 自動提醒 | 上課前 24 小時自動 push 提醒訊息（需排程任務） | 中 |
+| LINE Pay 整合 | 在 LIFF 頁面直接完成付款 | 高 |
+| 出缺席紀錄 | 每堂課打卡，累計出席率統計 | 低 |
