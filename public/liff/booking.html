@@ -199,7 +199,9 @@
         document.getElementById('main').style.display = 'block';
       } catch (err) {
         console.error('LIFF 初始化失敗:', err);
-        document.getElementById('loading').innerHTML = '❌ 初始化失敗，請關閉後重新開啟';
+        document.getElementById('loading').innerHTML =
+          '<div style="color:#991b1b;font-size:15px">❌ 初始化失敗</div>' +
+          '<p style="font-size:13px;color:#6b7280;margin-top:8px">請關閉視窗後重新開啟，或確認網路連線正常。</p>';
       }
     }
 

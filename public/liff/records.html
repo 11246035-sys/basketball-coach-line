@@ -198,7 +198,11 @@
 
       } catch (err) {
         console.error('載入失敗:', err);
-        document.getElementById('loading').innerHTML = '❌ 載入失敗';
+        document.getElementById('loading').innerHTML =
+          '<div style="color:#991b1b;font-size:15px">❌ 載入失敗</div>' +
+          '<p style="font-size:13px;color:#6b7280;margin-top:8px">請檢查網路連線後</p>' +
+          '<button onclick="location.reload()" class="btn btn-outline" ' +
+          'style="margin-top:12px;width:auto;padding:8px 20px;font-size:14px">重新載入</button>';
       }
     }
 
