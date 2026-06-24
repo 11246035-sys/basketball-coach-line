@@ -388,20 +388,28 @@
         let cls, label, extra = '';
         if (slot.reserved) {
           cls = 'reserved'; label = slot.reserved; extra = '🟣';
+        } else if (slot.is_continuation) {
+          cls = 'booked';
+          label = '↪ ' + (slot.continuation_of?.student_name || '承上');
+          extra = '';
         } else if (slot.status === 'booked') {
-          cls = 'booked'; label = slot.booking?.student_name || '已預約'; extra = '🔒';
+          const dur = slot.booking?.duration;
+          const durLabel = dur === 90 ? ' 1.5h' : '';
+          cls = 'booked';
+          label = (slot.booking?.student_name || '已預約') + durLabel;
+          extra = '🔒';
         } else if (slot.status === 'open') {
           cls = 'open'; label = '開放中'; extra = '✅';
         } else {
           cls = 'closed'; label = '不開放'; extra = '';
         }
 
-        const clickable = !slot.reserved && slot.status !== 'booked';
+        const clickable = !slot.reserved && slot.status !== 'booked' && !slot.is_continuation;
         const onclick = clickable ? `onclick="toggleSlot('${date}','${slot.time_slot}')"` : '';
 
         return `<div class="slot-item ${cls}" ${onclick}>
           <span class="slot-time">${slot.time_slot}</span>
-          <span class="slot-label">${extra} ${label}</span>
+          <span class="slot-label">${extra}${extra ? ' ' : ''}${label}</span>
         </div>`;
       }).join('');
 

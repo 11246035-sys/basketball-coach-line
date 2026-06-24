@@ -226,7 +226,7 @@ router.get('/day', requireAdmin, async (req, res) => {
     const [{ data: avail }, { data: reserved }, { data: bookings }, { data: holiday }] = await Promise.all([
       supabase.from('availability').select('*').eq('date', date),
       supabase.from('reserved_slots').select('*').eq('weekday', weekday),
-      supabase.from('bookings').select('id, student_name, session, status')
+      supabase.from('bookings').select('id, student_name, session, status, duration, end_time')
         .eq('date', date).in('status', ['pending', 'confirmed']),
       supabase.from('holidays').select('*').eq('date', date).maybeSingle()
     ]);
@@ -237,19 +237,34 @@ router.get('/day', requireAdmin, async (req, res) => {
     const bookingMap = {};
     (bookings || []).forEach(b => { bookingMap[b.session] = b; });
 
+    // Map booking_id → booking for continuation slots
+    const bookingByIdMap = {};
+    (bookings || []).forEach(b => { bookingByIdMap[b.id] = b; });
+
     const slots = ALL_SLOTS.map(slot => {
       const row = availMap[slot];
       const reservedBy = getReservedForSlot(slot, reserved || []);
       const booking = bookingMap[slot];
 
       let status = row ? row.status : 'closed';
-      if (booking) status = 'booked';
+      let isContinuation = false;
+      let continuationBooking = null;
+
+      if (booking) {
+        status = 'booked';
+      } else if (row && row.status === 'booked' && row.booking_id) {
+        // second slot of a 1.5hr booking
+        continuationBooking = bookingByIdMap[row.booking_id] || null;
+        if (continuationBooking) isContinuation = true;
+      }
 
       return {
         time_slot: slot,
         status,
         reserved: reservedBy ? reservedBy.student_name : null,
-        booking: booking ? { id: booking.id, student_name: booking.student_name, status: booking.status } : null
+        booking: booking ? { id: booking.id, student_name: booking.student_name, status: booking.status, duration: booking.duration || 60, end_time: booking.end_time } : null,
+        is_continuation: isContinuation,
+        continuation_of: isContinuation ? { id: continuationBooking.id, student_name: continuationBooking.student_name, session: continuationBooking.session } : null
       };
     });
 

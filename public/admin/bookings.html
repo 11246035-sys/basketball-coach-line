@@ -89,7 +89,10 @@
                     ${b.line_user_id ? `<div style="font-size:11px;color:#9ca3af;font-family:monospace">${b.line_user_id.slice(0,12)}…</div>` : ''}
                   </td>
                   <td>${b.date}</td>
-                  <td>${SESSION_MAP[b.session] || b.session}</td>
+                  <td>
+                    ${b.session}${b.end_time ? '–' + b.end_time : ''}
+                    ${b.duration === 90 ? '<div style="font-size:11px;color:#7c3aed;font-weight:700">1.5 小時</div>' : ''}
+                  </td>
                   <td style="max-width:120px;word-break:break-all">${b.notes || '-'}</td>
                   <td>${STATUS_MAP[b.status] || b.status}</td>
                   <td style="white-space:nowrap">

@@ -107,6 +107,15 @@
     .bk-cell.available.today-mark .bk-cell-date { background: var(--brand); color: #fff; }
     .bk-cell.available.selected.today-mark .bk-cell-date { background: rgba(255,255,255,0.3); color: #fff; }
 
+    /* Duration tabs */
+    .duration-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .dur-tab {
+      flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; background: #fff; font-size: 13px; font-weight: 700;
+      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .dur-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+
     /* Slot picker */
     .slot-section {
       border-top: 2px solid var(--brand-light); padding: 14px 12px 6px;
@@ -210,6 +219,11 @@
         <!-- 時段選擇（點擊可預約日期後展開） -->
         <div class="slot-section" id="slotSection" style="display:none">
           <div class="slot-section-title" id="slotSectionTitle"></div>
+          <!-- 課程長度 -->
+          <div class="duration-tabs" role="group" aria-label="選擇課程長度">
+            <div class="dur-tab active" id="durTab60" onclick="selectDuration(60, this)">⏱ 1 小時</div>
+            <div class="dur-tab" id="durTab90" onclick="selectDuration(90, this)">⏱ 1.5 小時</div>
+          </div>
           <div id="slotPickerWrap">
             <div class="slot-loading-msg">載入中...</div>
           </div>
@@ -305,6 +319,14 @@
     let selectedLevel = '';
     let selectedSlot = '';
     let selectedDate = '';
+    let selectedDuration = 60;
+    let allAvailableSlots = [];
+
+    function calcEndTime(slot, durationMins) {
+      const [h, m] = slot.split(':').map(Number);
+      const total = h * 60 + m + durationMins;
+      return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+    }
 
     // Calendar state
     const DAY_NAMES = ['日','一','二','三','四','五','六'];
@@ -430,26 +452,57 @@
     async function loadSlots(date) {
       const wrap = document.getElementById('slotPickerWrap');
       wrap.innerHTML = '<div class="slot-loading-msg">載入可用時段中...</div>';
+      selectedSlot = '';
       try {
         const res = await fetch(`/api/availability?date=${date}`);
         if (!res.ok) throw new Error();
         const { slots } = await res.json();
-        if (!slots || slots.length === 0) {
-          wrap.innerHTML = '<div class="slot-empty-msg">此日期目前無可預約時段，請選擇其他日期或聯絡教練</div>';
-          return;
-        }
-        wrap.innerHTML = '<div class="slot-grid">' +
-          slots.map(s => {
-            const h = parseInt(s.time_slot.split(':')[0]);
-            const end = `${String(h+1).padStart(2,'0')}:00`;
-            return `<div class="slot-btn" data-slot="${s.time_slot}" onclick="selectSlot('${s.time_slot}', this)">
-              <div>${s.time_slot}</div>
-              <div style="font-size:10px;color:#9ca3af">–${end}</div>
-            </div>`;
-          }).join('') + '</div>';
+        allAvailableSlots = slots || [];
+        renderSlotsForDuration();
       } catch {
         wrap.innerHTML = '<div class="slot-empty-msg">時段載入失敗，請重新整理</div>';
       }
+    }
+
+    function renderSlotsForDuration() {
+      const wrap = document.getElementById('slotPickerWrap');
+      selectedSlot = '';
+      if (allAvailableSlots.length === 0) {
+        wrap.innerHTML = '<div class="slot-empty-msg">此日期目前無可預約時段，請選擇其他日期或聯絡教練</div>';
+        return;
+      }
+
+      let slots = allAvailableSlots;
+      if (selectedDuration === 90) {
+        const slotSet = new Set(allAvailableSlots.map(s => s.time_slot));
+        slots = allAvailableSlots.filter(s => {
+          const [h, m] = s.time_slot.split(':').map(Number);
+          const total = h * 60 + m + 30;
+          const nextSlot = `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+          return slotSet.has(nextSlot);
+        });
+      }
+
+      if (slots.length === 0) {
+        wrap.innerHTML = '<div class="slot-empty-msg">此日期無連續可用時段（1.5 小時），請選 1 小時或其他日期</div>';
+        return;
+      }
+
+      wrap.innerHTML = '<div class="slot-grid">' +
+        slots.map(s => {
+          const endTime = calcEndTime(s.time_slot, selectedDuration);
+          return `<div class="slot-btn" data-slot="${s.time_slot}" onclick="selectSlot('${s.time_slot}', this)">
+            <div>${s.time_slot}</div>
+            <div style="font-size:10px;color:#9ca3af">–${endTime}</div>
+          </div>`;
+        }).join('') + '</div>';
+    }
+
+    function selectDuration(dur, el) {
+      selectedDuration = dur;
+      document.querySelectorAll('.dur-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+      if (allAvailableSlots.length > 0) renderSlotsForDuration();
     }
 
     function selectSlot(slot, el) {
@@ -543,6 +596,7 @@
       btn.disabled = true; btn.textContent = '送出中...';
 
       try {
+        const endTime = calcEndTime(session, selectedDuration);
         const res = await fetch('/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -550,6 +604,7 @@
             line_user_id: lineUserId,
             student_name: studentName,
             grade, level, phone, date, session,
+            duration: selectedDuration,
             location: location || null,
             goal: goal || null,
             notes: notes || null
@@ -557,10 +612,8 @@
         });
         const data = await res.json();
         if (res.ok) {
-          const h = parseInt(session.split(':')[0]);
-          const endTime = `${String(h + 1).padStart(2,'0')}:00`;
           document.getElementById('successDetail').innerHTML =
-            `👤 ${studentName}（${grade}・${level}）<br>📅 ${date}<br>⏰ ${session}–${endTime}${location ? '<br>📍 ' + location : ''}`;
+            `👤 ${studentName}（${grade}・${level}）<br>📅 ${date}<br>⏰ ${session}–${endTime}（${selectedDuration === 90 ? '1.5 小時' : '1 小時'}）${location ? '<br>📍 ' + location : ''}`;
           document.getElementById('successOverlay').classList.add('active');
           setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 3500);
         } else {
