@@ -24,6 +24,120 @@ function getReservedForSlot(slot, reserved) {
 }
 
 /**
+ * GET /api/availability/calendar?month=YYYY-MM
+ * Public: 回傳該月每天彙整狀態，給 LIFF 月曆使用
+ * 狀態: past | available | full | closed
+ */
+router.get('/calendar', async (req, res) => {
+  try {
+    const { month } = req.query;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ error: '請提供月份 (YYYY-MM)' });
+    }
+    const [y, m] = month.split('-').map(Number);
+    const startDate = `${month}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
+    const today = new Date().toISOString().split('T')[0];
+
+    const [{ data: holidays }, { data: avail }, { data: bookings }] = await Promise.all([
+      supabase.from('holidays').select('date').gte('date', startDate).lte('date', endDate),
+      supabase.from('availability').select('date, time_slot, status').gte('date', startDate).lte('date', endDate),
+      supabase.from('bookings').select('date, session')
+        .gte('date', startDate).lte('date', endDate)
+        .in('status', ['pending', 'confirmed'])
+    ]);
+
+    const holidaySet = new Set((holidays || []).map(h => h.date));
+
+    const availByDate = {};
+    (avail || []).forEach(a => {
+      if (!availByDate[a.date]) availByDate[a.date] = [];
+      availByDate[a.date].push(a);
+    });
+
+    const bookedByDate = {};
+    (bookings || []).forEach(b => {
+      if (!bookedByDate[b.date]) bookedByDate[b.date] = new Set();
+      bookedByDate[b.date].add(b.session);
+    });
+
+    const calendar = {};
+    for (let d = 1; d <= lastDay; d++) {
+      const dateStr = `${month}-${String(d).padStart(2, '0')}`;
+      if (dateStr < today) { calendar[dateStr] = 'past'; continue; }
+      if (holidaySet.has(dateStr)) { calendar[dateStr] = 'closed'; continue; }
+
+      const openSlots = (availByDate[dateStr] || []).filter(s => s.status === 'open');
+      if (openSlots.length === 0) { calendar[dateStr] = 'closed'; continue; }
+
+      const booked = bookedByDate[dateStr] || new Set();
+      const hasAvail = openSlots.some(s => !booked.has(s.time_slot));
+      calendar[dateStr] = hasAvail ? 'available' : 'full';
+    }
+
+    res.json({ calendar });
+  } catch (err) {
+    console.error('[Availability] calendar:', err.message);
+    res.status(500).json({ error: '查詢失敗' });
+  }
+});
+
+/**
+ * GET /api/availability/holidays?month=YYYY-MM
+ * Admin: 取得該月公休日清單
+ */
+router.get('/holidays', requireAdmin, async (req, res) => {
+  try {
+    const { month } = req.query;
+    if (!month) return res.status(400).json({ error: '請提供月份' });
+    const [y, m] = month.split('-').map(Number);
+    const startDate = `${month}-01`;
+    const endDate = `${month}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+    const { data, error } = await supabase.from('holidays').select('*')
+      .gte('date', startDate).lte('date', endDate);
+    if (error) throw error;
+    res.json({ holidays: data || [] });
+  } catch (err) {
+    res.status(500).json({ error: '查詢失敗' });
+  }
+});
+
+/**
+ * POST /api/availability/holidays
+ * Admin: 新增公休日
+ */
+router.post('/holidays', requireAdmin, async (req, res) => {
+  try {
+    const { date, reason } = req.body;
+    if (!date) return res.status(400).json({ error: '請提供日期' });
+    const { data, error } = await supabase.from('holidays')
+      .upsert({ date, reason: reason || null }, { onConflict: 'date' })
+      .select().single();
+    if (error) throw error;
+    res.json({ success: true, holiday: data });
+  } catch (err) {
+    console.error('[Holidays] add:', err.message);
+    res.status(500).json({ error: '新增失敗' });
+  }
+});
+
+/**
+ * DELETE /api/availability/holidays/:date
+ * Admin: 取消公休日
+ */
+router.delete('/holidays/:date', requireAdmin, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { error } = await supabase.from('holidays').delete().eq('date', date);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '刪除失敗' });
+  }
+});
+
+/**
  * GET /api/availability?date=YYYY-MM-DD
  * Public: 給預約表單用，只回傳 available: true 的時段
  */
@@ -34,6 +148,10 @@ router.get('/', async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
     if (date < today) return res.json({ slots: [] });
+
+    // 公休日直接回傳空
+    const { data: holiday } = await supabase.from('holidays').select('date').eq('date', date).maybeSingle();
+    if (holiday) return res.json({ slots: [] });
 
     const weekday = toDbWeekday(new Date(date + 'T00:00:00').getDay());
 
@@ -62,7 +180,7 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /api/availability/month?year=YYYY&month=MM
- * Admin: 取得整月摘要（availability + reserved + bookings）
+ * Admin: 取得整月摘要（availability + reserved + bookings + holidays）
  */
 router.get('/month', requireAdmin, async (req, res) => {
   try {
@@ -72,19 +190,21 @@ router.get('/month', requireAdmin, async (req, res) => {
     const lastDay = new Date(y, m, 0).getDate();
     const endDate = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
 
-    const [{ data: avail }, { data: reserved }, { data: bookings }] = await Promise.all([
+    const [{ data: avail }, { data: reserved }, { data: bookings }, { data: holidays }] = await Promise.all([
       supabase.from('availability').select('date, time_slot, status')
         .gte('date', startDate).lte('date', endDate),
       supabase.from('reserved_slots').select('*').order('weekday').order('start_time'),
       supabase.from('bookings').select('id, student_name, date, session, status')
         .gte('date', startDate).lte('date', endDate)
-        .in('status', ['pending', 'confirmed'])
+        .in('status', ['pending', 'confirmed']),
+      supabase.from('holidays').select('*').gte('date', startDate).lte('date', endDate)
     ]);
 
     res.json({
       availability: avail || [],
       reserved: reserved || [],
-      bookings: bookings || []
+      bookings: bookings || [],
+      holidays: holidays || []
     });
   } catch (err) {
     console.error('[Availability] month:', err.message);
@@ -103,11 +223,12 @@ router.get('/day', requireAdmin, async (req, res) => {
 
     const weekday = toDbWeekday(new Date(date + 'T00:00:00').getDay());
 
-    const [{ data: avail }, { data: reserved }, { data: bookings }] = await Promise.all([
+    const [{ data: avail }, { data: reserved }, { data: bookings }, { data: holiday }] = await Promise.all([
       supabase.from('availability').select('*').eq('date', date),
       supabase.from('reserved_slots').select('*').eq('weekday', weekday),
       supabase.from('bookings').select('id, student_name, session, status')
-        .eq('date', date).in('status', ['pending', 'confirmed'])
+        .eq('date', date).in('status', ['pending', 'confirmed']),
+      supabase.from('holidays').select('*').eq('date', date).maybeSingle()
     ]);
 
     const availMap = {};
@@ -132,7 +253,7 @@ router.get('/day', requireAdmin, async (req, res) => {
       };
     });
 
-    res.json({ slots });
+    res.json({ slots, is_holiday: !!holiday, holiday_reason: holiday?.reason || null });
   } catch (err) {
     console.error('[Availability] day:', err.message);
     res.status(500).json({ error: '查詢失敗' });
@@ -175,11 +296,11 @@ router.put('/toggle', requireAdmin, async (req, res) => {
 
 /**
  * PUT /api/availability/batch
- * Admin: 批次設定一天所有時段（全開 / 全關 / 自訂）
+ * Admin: 批次設定一天所有時段（全開 / 全關）
  */
 router.put('/batch', requireAdmin, async (req, res) => {
   try {
-    const { date, action } = req.body; // action: 'open_all' | 'close_all'
+    const { date, action } = req.body;
     if (!date) return res.status(400).json({ error: '請提供日期' });
 
     if (action === 'close_all') {
