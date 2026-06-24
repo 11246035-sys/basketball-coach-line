@@ -16,8 +16,10 @@
   <div class="admin-tabs">
     <a href="dashboard.html" class="tab">📊 總覽</a>
     <a href="bookings.html" class="tab active">📅 預約管理</a>
+    <a href="calendar.html" class="tab">🗓️ 行事曆</a>
     <a href="records.html" class="tab">📸 課程紀錄</a>
     <a href="students.html" class="tab">👥 學生管理</a>
+    <a href="blacklist.html" class="tab">🚫 黑名單</a>
   </div>
 
   <div class="admin-container">
@@ -82,16 +84,23 @@
             <tbody>
               ${bookings.map(b => `
                 <tr>
-                  <td><strong>${b.student_name}</strong></td>
+                  <td>
+                    <strong>${b.student_name}</strong>
+                    ${b.line_user_id ? `<div style="font-size:11px;color:#9ca3af;font-family:monospace">${b.line_user_id.slice(0,12)}…</div>` : ''}
+                  </td>
                   <td>${b.date}</td>
                   <td>${SESSION_MAP[b.session] || b.session}</td>
-                  <td style="max-width:150px;word-break:break-all">${b.notes || '-'}</td>
+                  <td style="max-width:120px;word-break:break-all">${b.notes || '-'}</td>
                   <td>${STATUS_MAP[b.status] || b.status}</td>
-                  <td>
+                  <td style="white-space:nowrap">
                     ${b.status === 'pending' ? `
                       <button class="btn-sm btn-success" onclick="updateStatus('${b.id}','confirmed')">接受</button>
                       <button class="btn-sm btn-danger" onclick="updateStatus('${b.id}','rejected')">拒絕</button>
-                    ` : '-'}
+                    ` : ''}
+                    ${b.line_user_id ? `
+                      <button class="btn-sm btn-outline" title="封鎖此 LINE 帳號"
+                        onclick="blockUser('${b.line_user_id}','${b.student_name}')">🚫</button>
+                    ` : ''}
                   </td>
                 </tr>
               `).join('')}
@@ -116,6 +125,24 @@
           loadBookings();
         } else {
           showToast('更新失敗', 'error');
+        }
+      } catch { showToast('操作失敗', 'error'); }
+    }
+
+    async function blockUser(lineUserId, studentName) {
+      const reason = prompt(`封鎖 ${studentName} 的 LINE 帳號\n\n請輸入封鎖原因（可空白）：`);
+      if (reason === null) return; // 取消
+      try {
+        const res = await fetch('/api/blacklist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ line_user_id: lineUserId, reason: reason.trim() || null })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`已將 ${studentName} 加入黑名單`);
+        } else {
+          showToast(data.error || '操作失敗', 'error');
         }
       } catch { showToast('操作失敗', 'error'); }
     }

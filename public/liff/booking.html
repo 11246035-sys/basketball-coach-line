@@ -34,14 +34,19 @@
     .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--brand); }
     .btn-primary { background: var(--brand); }
     .btn-primary:hover { background: var(--brand-dark); }
-    .session-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-    .session-tab {
-      flex: 1; padding: 8px 4px; border: 1.5px solid var(--gray-200);
-      border-radius: 8px; background: #fff; font-size: 12px; font-weight: 600;
-      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
-    }
-    .session-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
     .level-tabs { display: flex; gap: 8px; }
+    .slot-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px;
+    }
+    .slot-btn {
+      padding: 10px 4px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      background: #fff; font-size: 13px; font-weight: 600; color: var(--gray-700);
+      cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .slot-btn:hover { border-color: var(--brand); background: var(--brand-light); }
+    .slot-btn.selected { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+    .slot-loading-msg { font-size: 13px; color: #9ca3af; padding: 12px 0; }
+    .slot-empty-msg { font-size: 13px; color: #ef4444; padding: 10px 12px; background: #fef2f2; border-radius: 8px; }
     .level-tab {
       flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200);
       border-radius: 8px; background: #fff; font-size: 13px; font-weight: 600;
@@ -157,23 +162,12 @@
             <input type="date" id="date" aria-required="true" required>
           </div>
 
-          <!-- 上課時段 -->
+          <!-- 上課時段（從行事曆動態載入） -->
           <div class="form-group">
             <label>上課時段 <span style="color:var(--brand)">*</span></label>
-            <div class="session-tabs" role="group" aria-label="選擇上課時段">
-              <div class="session-tab active" data-period="morning" role="button" tabindex="0"
-                aria-pressed="true" onclick="switchPeriod('morning', this)">🌅 早上</div>
-              <div class="session-tab" data-period="afternoon" role="button" tabindex="0"
-                aria-pressed="false" onclick="switchPeriod('afternoon', this)">☀️ 下午</div>
-              <div class="session-tab" data-period="evening" role="button" tabindex="0"
-                aria-pressed="false" onclick="switchPeriod('evening', this)">🌙 晚上</div>
+            <div id="slotPickerWrap">
+              <div class="slot-loading-msg">請先選擇日期</div>
             </div>
-            <div class="time-select-wrap">
-              <select id="timeSelect" aria-label="選擇上課時間" onchange="updateEndHint()">
-                <option value="">請選擇時間</option>
-              </select>
-            </div>
-            <div class="time-end-hint" id="endHint" aria-live="polite"></div>
           </div>
 
           <!-- 理想地區 -->
@@ -216,34 +210,50 @@
 
   <script>
     let lineUserId = null;
-    let currentPeriod = 'morning';
     let selectedLevel = '';
-
-    const PERIODS = {
-      morning:   { times: ['09:00','10:00','11:00'] },
-      afternoon: { times: ['13:00','14:00','15:00','16:00'] },
-      evening:   { times: ['18:00','19:00','20:00'] }
-    };
+    let selectedSlot = '';
 
     document.getElementById('date').min = new Date().toISOString().split('T')[0];
     const defaultDate = new Date();
     defaultDate.setDate(defaultDate.getDate() + 3);
     document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
 
-    function switchPeriod(period, el) {
-      currentPeriod = period;
-      document.querySelectorAll('.session-tab').forEach(t => {
-        t.classList.remove('active');
-        t.setAttribute('aria-pressed', 'false');
-      });
-      el.classList.add('active');
-      el.setAttribute('aria-pressed', 'true');
-      const sel = document.getElementById('timeSelect');
-      sel.innerHTML = '<option value="">請選擇時間</option>';
-      PERIODS[period].times.forEach(t => {
-        sel.insertAdjacentHTML('beforeend', `<option value="${t}">${t}</option>`);
-      });
-      document.getElementById('endHint').textContent = '';
+    // 日期變更時載入可用時段
+    document.getElementById('date').addEventListener('change', () => {
+      selectedSlot = '';
+      loadSlots(document.getElementById('date').value);
+    });
+
+    async function loadSlots(date) {
+      const wrap = document.getElementById('slotPickerWrap');
+      if (!date) { wrap.innerHTML = '<div class="slot-loading-msg">請先選擇日期</div>'; return; }
+      wrap.innerHTML = '<div class="slot-loading-msg">載入可用時段中...</div>';
+      try {
+        const res = await fetch(`/api/availability?date=${date}`);
+        if (!res.ok) throw new Error();
+        const { slots } = await res.json();
+        if (!slots || slots.length === 0) {
+          wrap.innerHTML = '<div class="slot-empty-msg">此日期目前無可預約時段，請選擇其他日期或聯絡教練</div>';
+          return;
+        }
+        wrap.innerHTML = '<div class="slot-grid">' +
+          slots.map(s => {
+            const h = parseInt(s.time_slot.split(':')[0]);
+            const end = `${String(h+1).padStart(2,'0')}:00`;
+            return `<div class="slot-btn" data-slot="${s.time_slot}" onclick="selectSlot('${s.time_slot}', this)">
+              <div>${s.time_slot}</div>
+              <div style="font-size:10px;color:#9ca3af">–${end}</div>
+            </div>`;
+          }).join('') + '</div>';
+      } catch {
+        wrap.innerHTML = '<div class="slot-empty-msg">時段載入失敗，請重新整理</div>';
+      }
+    }
+
+    function selectSlot(slot, el) {
+      selectedSlot = slot;
+      document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
     }
 
     function selectLevel(level, el) {
@@ -251,16 +261,6 @@
       document.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
       if (el) el.classList.add('active');
     }
-
-    function updateEndHint() {
-      const val = document.getElementById('timeSelect').value;
-      const hint = document.getElementById('endHint');
-      if (!val) { hint.textContent = ''; return; }
-      const h = parseInt(val.split(':')[0]);
-      hint.textContent = `⏱ ${val} – ${String(h + 1).padStart(2, '0')}:00（60 分鐘）`;
-    }
-
-    switchPeriod('morning', document.querySelector('.session-tab[data-period="morning"]'));
 
     // 鍵盤支援 level tabs
     document.querySelectorAll('.level-tab').forEach(tab => {
@@ -271,6 +271,9 @@
         }
       });
     });
+
+    // 初始載入預設日期的時段
+    loadSlots(document.getElementById('date').value);
 
     async function loadProfile(uid) {
       try {
@@ -319,7 +322,7 @@
       const level = selectedLevel;
       const phone = document.getElementById('phone').value.trim();
       const date = document.getElementById('date').value;
-      const session = document.getElementById('timeSelect').value;
+      const session = selectedSlot;
       const location = document.getElementById('location').value.trim();
       const goal = document.getElementById('goal').value.trim();
       const notes = document.getElementById('notes').value.trim();
@@ -330,7 +333,7 @@
       if (!phone) { showAlert('請填寫聯絡電話'); return; }
       if (!/^[\d\-\+\s\(\)]{8,20}$/.test(phone)) { showAlert('請輸入有效的電話號碼（數字、-、+）'); return; }
       if (!date) { showAlert('請選擇上課日期'); return; }
-      if (!session) { showAlert('請選擇上課時間'); return; }
+      if (!session) { showAlert('請選擇上課時段'); return; }
 
       const btn = document.getElementById('submitBtn');
       btn.disabled = true; btn.textContent = '送出中...';
