@@ -281,10 +281,14 @@
             <label for="location">理想地區或球場 <span style="color:var(--brand)">*</span></label>
             <input type="text" id="location" aria-required="true"
               placeholder="例如：內湖運動中心、大佳河濱、或您方便的地區" maxlength="100">
-            <label style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#6b7280">
-              <input type="checkbox" id="locationUndecided" onchange="toggleLocationUndecided()">
-              <span>尚未決定，想與教練討論</span>
-            </label>
+            <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="locationUndecided" onchange="toggleLocationUndecided()"
+                style="flex-shrink:0;width:16px;height:16px;cursor:pointer;margin:0;accent-color:var(--brand)">
+              <label for="locationUndecided"
+                style="font-size:13px;color:#6b7280;cursor:pointer;margin:0;line-height:1.4;white-space:nowrap">
+                尚未決定，想與教練討論
+              </label>
+            </div>
           </div>
 
           <!-- 訓練目標 -->
