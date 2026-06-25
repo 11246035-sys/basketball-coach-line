@@ -76,6 +76,9 @@ router.post('/', async (req, res) => {
     if (!line_user_id || !student_name || !date || !session) {
       return res.status(400).json({ error: '請填寫完整資料（姓名、日期、時段為必填）' });
     }
+    if (!location) {
+      return res.status(400).json({ error: '請填寫理想地區，或選擇「未定，與教練討論」' });
+    }
     if (![60, 90].includes(duration)) {
       return res.status(400).json({ error: '無效的課程長度（60 或 90 分鐘）' });
     }

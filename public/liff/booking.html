@@ -278,9 +278,13 @@
 
           <!-- 理想地區 -->
           <div class="form-group">
-            <label for="location">理想地區或球場<span class="required-hint">（選填）</span></label>
-            <input type="text" id="location"
-              placeholder="例如：內湖運動中心、河濱球場、或您方便的地區" maxlength="100">
+            <label for="location">理想地區或球場 <span style="color:var(--brand)">*</span></label>
+            <input type="text" id="location" aria-required="true"
+              placeholder="例如：內湖運動中心、大佳河濱、或您方便的地區" maxlength="100">
+            <label style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#6b7280">
+              <input type="checkbox" id="locationUndecided" onchange="toggleLocationUndecided()">
+              <span>尚未決定，想與教練討論</span>
+            </label>
           </div>
 
           <!-- 訓練目標 -->
@@ -511,6 +515,21 @@
       el.classList.add('selected');
     }
 
+    function toggleLocationUndecided() {
+      const cb = document.getElementById('locationUndecided');
+      const input = document.getElementById('location');
+      if (cb.checked) {
+        input.value = '';
+        input.disabled = true;
+        input.placeholder = '（尚未決定，將與教練討論）';
+        input.style.background = '#f9fafb';
+      } else {
+        input.disabled = false;
+        input.placeholder = '例如：內湖運動中心、大佳河濱、或您方便的地區';
+        input.style.background = '';
+      }
+    }
+
     function selectLevel(level, el) {
       selectedLevel = level;
       document.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
@@ -580,7 +599,8 @@
       const phone = document.getElementById('phone').value.trim();
       const date = selectedDate;
       const session = selectedSlot;
-      const location = document.getElementById('location').value.trim();
+      const locationUndecided = document.getElementById('locationUndecided').checked;
+      const location = locationUndecided ? '未定，與教練討論' : document.getElementById('location').value.trim();
       const goal = document.getElementById('goal').value.trim();
       const notes = document.getElementById('notes').value.trim();
 
@@ -589,6 +609,7 @@
       if (!level) { showAlert('請選擇籃球程度'); return; }
       if (!phone) { showAlert('請填寫聯絡電話'); return; }
       if (!/^[\d\-\+\s\(\)]{8,20}$/.test(phone)) { showAlert('請輸入有效的電話號碼（數字、-、+）'); return; }
+      if (!location) { showAlert('請填寫理想地區，或勾選「尚未決定，想與教練討論」'); return; }
       if (!date) { showAlert('請在月曆上選擇上課日期'); return; }
       if (!session) { showAlert('請選擇上課時段'); return; }
 
