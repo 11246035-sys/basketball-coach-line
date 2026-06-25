@@ -4,7 +4,7 @@ const { lineConfig, replyMessage, textMessage } = require('./utils/line');
 
 const router = express.Router();
 
-// LINE SDK 中介軟體：驗證 Webhook 簽章，必須使用原始 body
+// LINE SDK 中介軟體：驗證 Webhook 簽章（使用原始 body，必須在 express.json 之前掛載）
 const middleware = line.middleware(lineConfig);
 
 // 上課須知文字內容
@@ -32,10 +32,10 @@ const NOTICE_TEXT = `📋 上課須知
 如有任何問題，歡迎直接在此留言！`;
 
 /**
- * 處理 LINE Webhook 事件
+ * LINE Webhook 主入口
+ * 立即回覆 200 讓 LINE 伺服器停止重試，再非同步處理各事件
  */
 router.post('/', middleware, async (req, res) => {
-  // 立即回覆 200，防止 LINE 重送請求
   res.status(200).json({ status: 'ok' });
 
   const events = req.body.events;
@@ -48,7 +48,8 @@ router.post('/', middleware, async (req, res) => {
 });
 
 /**
- * 根據事件類型分派處理函式
+ * 根據事件類型分派對應處理函式
+ * 不認識的事件類型只記 log，不拋錯（LINE 可能推送新事件類型）
  */
 async function handleEvent(event) {
   console.log(`[Webhook] 收到事件: ${event.type}`);
@@ -66,15 +67,15 @@ async function handleEvent(event) {
 }
 
 /**
- * 處理文字訊息
+ * 處理使用者傳入的訊息
+ * 目前只處理文字訊息；其他類型（圖片、貼圖等）一律給預設回覆
  */
 async function handleMessage(event) {
   if (event.message.type !== 'text') return;
 
   const text = event.message.text.trim();
-  console.log(`[Webhook] 收到訊息: "${text}"`);
 
-  // 關鍵字觸發
+  // 依關鍵字決定回覆內容
   if (text.includes('上課須知') || text.includes('注意事項') || text === '須知') {
     return replyMessage(event.replyToken, textMessage(NOTICE_TEXT));
   }
@@ -92,23 +93,33 @@ async function handleMessage(event) {
       text: '請點選下方選單的「📸 課程紀錄」按鈕查看紀錄！'
     });
   }
+
+  // 非指令訊息：一律給予預設回覆，確保任何用戶（含新用戶）都有回應
+  return replyMessage(event.replyToken, textMessage(
+    `感謝您的訊息！教練會盡快回覆您 🏀\n您也可以使用下方選單快速預約課程或查看紀錄。`
+  ));
 }
 
 /**
  * 處理加入好友事件
  */
 async function handleFollow(event) {
+  const POSTER_URL = 'https://basketball-coach-line-production.up.railway.app/assets/poster/welcome-poster.png';
   const welcomeText = `🏀 歡迎加入籃球家教！
+請使用下方選單開始使用：
+📅 預約課程 - 填寫預約表單
+📋 上課須知 - 查看課程相關資訊
+📸 課程紀錄 - 查看上課照片與紀錄
+如有任何問題請直接留言，教練會盡快回覆！`;
 
-感謝您的關注！以下是快速導覽：
-
-📅 預約課程 → 點選下方選單預約上課時間
-📋 上課須知 → 了解上課地點、費用與注意事項
-📸 課程紀錄 → 查看歷次上課照片與紀錄
-
-如有任何問題，歡迎直接留言詢問！`;
-
-  return replyMessage(event.replyToken, textMessage(welcomeText));
+  return replyMessage(event.replyToken, [
+    textMessage(welcomeText),
+    {
+      type: 'image',
+      originalContentUrl: POSTER_URL,
+      previewImageUrl: POSTER_URL
+    }
+  ]);
 }
 
 /**

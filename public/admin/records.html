@@ -10,7 +10,7 @@
     .upload-area {
       border: 2px dashed var(--gray-200);
       border-radius: 8px;
-      padding: 24px;
+      padding: 20px;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s;
@@ -28,11 +28,12 @@
       width: 80px;
       height: 80px;
     }
-    .preview-item img {
+    .preview-item img, .preview-item video {
       width: 100%;
       height: 100%;
       object-fit: cover;
       border-radius: 6px;
+      display: block;
     }
     .preview-item .remove {
       position: absolute;
@@ -50,6 +51,21 @@
       align-items: center;
       justify-content: center;
     }
+    .preview-item .file-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.5);
+      color: #fff;
+      font-size: 9px;
+      text-align: center;
+      border-radius: 0 0 6px 6px;
+      padding: 2px 2px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
     .record-item {
       background: #fff;
       border-radius: var(--radius);
@@ -66,7 +82,7 @@
     .record-photos {
       display: flex;
       gap: 4px;
-      padding: 0 16px 12px;
+      padding: 0 16px 8px;
       overflow-x: auto;
     }
     .record-photos img {
@@ -75,6 +91,18 @@
       object-fit: cover;
       border-radius: 4px;
       flex-shrink: 0;
+    }
+    .record-videos {
+      padding: 0 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .record-videos video {
+      width: 100%;
+      max-height: 160px;
+      border-radius: 6px;
+      background: #000;
     }
     .modal-overlay {
       display: none;
@@ -100,6 +128,32 @@
       font-weight: 700;
       margin-bottom: 20px;
     }
+    .upload-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--gray-200);
+    }
+    .upload-tab {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #f9fafb;
+      color: var(--gray-600);
+      transition: background 0.15s, color 0.15s;
+      border: none;
+    }
+    .upload-tab.active {
+      background: var(--orange);
+      color: #fff;
+    }
+    .upload-panel { display: none; }
+    .upload-panel.active { display: block; }
   </style>
 </head>
 <body>
@@ -146,15 +200,36 @@
           <label>課程說明</label>
           <textarea id="recDesc" placeholder="今日訓練內容、進步情況、下次重點..."></textarea>
         </div>
+
+        <!-- 上傳區 tabs -->
         <div class="form-group">
-          <label>上傳照片（最多 5 張）</label>
-          <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
-            <div style="font-size:32px">📷</div>
-            <div style="font-size:14px;color:#6b7280;margin-top:8px">點擊選擇照片或拖曳至此</div>
-            <input type="file" id="photoInput" accept="image/*" multiple>
+          <label>上傳媒體</label>
+          <div class="upload-tabs">
+            <button type="button" class="upload-tab active" onclick="switchTab('photo')">📷 照片（最多 5 張）</button>
+            <button type="button" class="upload-tab" onclick="switchTab('video')">🎬 影片（最多 3 支）</button>
           </div>
-          <div class="preview-grid" id="previewGrid"></div>
+
+          <!-- 照片上傳 -->
+          <div class="upload-panel active" id="photoPanel">
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('photoInput').click()">
+              <div style="font-size:28px">📷</div>
+              <div style="font-size:13px;color:#6b7280;margin-top:6px">點擊選擇照片或拖曳至此</div>
+              <input type="file" id="photoInput" accept="image/*" multiple>
+            </div>
+            <div class="preview-grid" id="previewGrid"></div>
+          </div>
+
+          <!-- 影片上傳 -->
+          <div class="upload-panel" id="videoPanel">
+            <div class="upload-area" id="videoUploadArea" onclick="document.getElementById('videoInput').click()">
+              <div style="font-size:28px">🎬</div>
+              <div style="font-size:13px;color:#6b7280;margin-top:6px">點擊選擇影片（mp4 / mov / webm，單支限 50MB）</div>
+              <input type="file" id="videoInput" accept="video/mp4,video/quicktime,video/webm" multiple>
+            </div>
+            <div class="preview-grid" id="videoPreviewGrid"></div>
+          </div>
         </div>
+
         <div class="form-group">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
             <input type="checkbox" id="notifyParent" checked>
@@ -167,7 +242,7 @@
           <div style="background:#e5e7eb;border-radius:4px;height:8px">
             <div id="progressBar" style="background:var(--orange);height:100%;border-radius:4px;width:0%;transition:width 0.3s"></div>
           </div>
-          <div style="text-align:center;font-size:13px;margin-top:4px;color:#6b7280">上傳中...</div>
+          <div style="text-align:center;font-size:13px;margin-top:4px;color:#6b7280" id="progressLabel">上傳中...</div>
         </div>
 
         <div style="display:flex;gap:8px;margin-top:8px">
@@ -181,45 +256,104 @@
   <script src="/assets/js/admin-common.js"></script>
   <script>
     let selectedFiles = [];
+    let selectedVideos = [];
+    let activeTab = 'photo';
 
     requireLogin(loadRecords);
-
-    // 設定日期預設為今天
     document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
 
-    // 照片選擇
-    document.getElementById('photoInput').addEventListener('change', handleFiles);
+    // 切換 photo/video tab
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.upload-tab').forEach((el, i) => {
+        el.classList.toggle('active', (tab === 'photo' && i === 0) || (tab === 'video' && i === 1));
+      });
+      document.getElementById('photoPanel').classList.toggle('active', tab === 'photo');
+      document.getElementById('videoPanel').classList.toggle('active', tab === 'video');
+    }
 
-    // 拖放
+    // 照片選擇
+    document.getElementById('photoInput').addEventListener('change', handlePhotoFiles);
     const uploadArea = document.getElementById('uploadArea');
     uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
     uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
     uploadArea.addEventListener('drop', e => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
-      handleFiles({ target: { files: e.dataTransfer.files } });
+      handlePhotoFiles({ target: { files: e.dataTransfer.files } });
     });
 
-    function handleFiles(e) {
+    function handlePhotoFiles(e) {
       const newFiles = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
       selectedFiles = [...selectedFiles, ...newFiles].slice(0, 5);
-      renderPreview();
+      renderPhotoPreview();
     }
 
-    function renderPreview() {
+    function renderPhotoPreview() {
       const grid = document.getElementById('previewGrid');
       grid.innerHTML = selectedFiles.map((f, i) => {
         const url = URL.createObjectURL(f);
         return `<div class="preview-item">
           <img src="${url}" alt="">
-          <button class="remove" onclick="removeFile(${i})">✕</button>
+          <button type="button" class="remove" onclick="removePhoto(${i})">✕</button>
         </div>`;
       }).join('');
     }
 
-    function removeFile(index) {
+    function removePhoto(index) {
       selectedFiles.splice(index, 1);
-      renderPreview();
+      renderPhotoPreview();
+    }
+
+    // 影片選擇
+    document.getElementById('videoInput').addEventListener('change', handleVideoFiles);
+    const videoUploadArea = document.getElementById('videoUploadArea');
+    videoUploadArea.addEventListener('dragover', e => { e.preventDefault(); videoUploadArea.classList.add('dragover'); });
+    videoUploadArea.addEventListener('dragleave', () => videoUploadArea.classList.remove('dragover'));
+    videoUploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      videoUploadArea.classList.remove('dragover');
+      handleVideoFiles({ target: { files: e.dataTransfer.files } });
+    });
+
+    const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
+
+    function handleVideoFiles(e) {
+      const files = Array.from(e.target.files);
+      const alertEl = document.getElementById('uploadAlert');
+      alertEl.innerHTML = '';
+      const oversize = files.filter(f => f.size > MAX_VIDEO_SIZE);
+      const invalid = files.filter(f => !ALLOWED_VIDEO_TYPES.includes(f.type));
+      if (oversize.length > 0) {
+        alertEl.innerHTML = `<div class="alert alert-error">影片「${oversize.map(f=>f.name).join('、')}」超過 50MB 限制，已略過。</div>`;
+      }
+      if (invalid.length > 0) {
+        alertEl.innerHTML += `<div class="alert alert-error">檔案「${invalid.map(f=>f.name).join('、')}」格式不支援，僅接受 mp4/mov/webm。</div>`;
+      }
+      const validFiles = files.filter(f => ALLOWED_VIDEO_TYPES.includes(f.type) && f.size <= MAX_VIDEO_SIZE);
+      selectedVideos = [...selectedVideos, ...validFiles].slice(0, 3);
+      renderVideoPreview();
+      // 重置 input 讓同一檔案可再選
+      document.getElementById('videoInput').value = '';
+    }
+
+    function renderVideoPreview() {
+      const grid = document.getElementById('videoPreviewGrid');
+      grid.innerHTML = selectedVideos.map((f, i) => {
+        const url = URL.createObjectURL(f);
+        const name = f.name.length > 12 ? f.name.slice(0, 10) + '…' : f.name;
+        return `<div class="preview-item">
+          <video src="${url}" muted preload="metadata"></video>
+          <span class="file-label">${name}</span>
+          <button type="button" class="remove" onclick="removeVideo(${i})">✕</button>
+        </div>`;
+      }).join('');
+    }
+
+    function removeVideo(index) {
+      selectedVideos.splice(index, 1);
+      renderVideoPreview();
     }
 
     function openModal() {
@@ -229,9 +363,12 @@
       document.getElementById('addModal').classList.remove('active');
       document.getElementById('recordForm').reset();
       selectedFiles = [];
-      renderPreview();
+      selectedVideos = [];
+      renderPhotoPreview();
+      renderVideoPreview();
       document.getElementById('uploadAlert').innerHTML = '';
       document.getElementById('recDate').value = new Date().toISOString().split('T')[0];
+      switchTab('photo');
     }
 
     document.getElementById('recordForm').addEventListener('submit', async (e) => {
@@ -255,12 +392,15 @@
       if (desc) formData.append('description', desc);
       formData.append('notify', notify ? 'true' : 'false');
       selectedFiles.forEach(f => formData.append('photos', f));
+      selectedVideos.forEach(f => formData.append('videos', f));
 
+      const totalVideos = selectedVideos.length;
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
       btn.textContent = '儲存中...';
       document.getElementById('uploadProgress').style.display = 'block';
-      document.getElementById('progressBar').style.width = '50%';
+      document.getElementById('progressLabel').textContent = totalVideos > 0 ? '上傳中（影片較大，請稍候）...' : '上傳中...';
+      document.getElementById('progressBar').style.width = '30%';
 
       try {
         const res = await fetch('/api/records', { method: 'POST', body: formData });
@@ -268,7 +408,9 @@
         const data = await res.json();
 
         if (res.ok) {
-          showToast('課程紀錄已新增' + (notify && lineId ? '，通知已發送' : ''));
+          const vCount = (data.record?.videos || []).length;
+          const pCount = (data.record?.photos || []).length;
+          showToast(`課程紀錄已新增（照片 ${pCount} 張，影片 ${vCount} 支）`);
           closeModal();
           loadRecords();
         } else {
@@ -280,6 +422,7 @@
         btn.disabled = false;
         btn.textContent = '儲存紀錄';
         document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
       }
     });
 
@@ -295,30 +438,40 @@
           return;
         }
 
-        document.getElementById('recordsList').innerHTML = records.map(r => `
+        document.getElementById('recordsList').innerHTML = records.map(r => {
+          const photos = r.photos || [];
+          const videos = r.videos || [];
+          return `
           <div class="record-item">
             <div class="record-item-header">
               <div>
                 <strong>${r.date}</strong>
                 <span style="margin-left:8px;color:#6b7280">👤 ${r.student_name}</span>
+                ${photos.length > 0 ? `<span style="margin-left:6px;font-size:12px;color:#9ca3af">📷${photos.length}</span>` : ''}
+                ${videos.length > 0 ? `<span style="margin-left:4px;font-size:12px;color:#9ca3af">🎬${videos.length}</span>` : ''}
               </div>
               <button class="btn-sm btn-danger" onclick="deleteRecord('${r.id}')">刪除</button>
             </div>
             ${r.description ? `<div style="padding:0 16px 8px;font-size:13px;color:#4b5563">${r.description}</div>` : ''}
-            ${(r.photos||[]).length > 0 ? `
+            ${photos.length > 0 ? `
               <div class="record-photos">
-                ${r.photos.map(p => `<img src="${p.thumbnail_url||p.url}" alt="">`).join('')}
+                ${photos.map(p => `<img src="${p.thumbnail_url||p.url}" alt="">`).join('')}
               </div>
             ` : ''}
-          </div>
-        `).join('');
+            ${videos.length > 0 ? `
+              <div class="record-videos">
+                ${videos.map(v => `<video src="${v.url}" controls preload="none"></video>`).join('')}
+              </div>
+            ` : ''}
+          </div>`;
+        }).join('');
       } catch {
         document.getElementById('recordsList').innerHTML = '<div class="alert alert-error">載入失敗</div>';
       }
     }
 
     async function deleteRecord(id) {
-      if (!confirm('確認刪除此課程紀錄？照片也會一併刪除，此操作無法復原。')) return;
+      if (!confirm('確認刪除此課程紀錄？照片與影片也會一併刪除，此操作無法復原。')) return;
       try {
         const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
         if (res.ok) { showToast('已刪除'); loadRecords(); }
