@@ -5,6 +5,26 @@ const { requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 /**
+ * GET /api/students/profile?lineUserId=xxx
+ * 熟客自動帶入：查詢該 LINE 用戶的學生基本資料（公開）
+ */
+router.get('/profile', async (req, res) => {
+  const { lineUserId } = req.query;
+  if (!lineUserId) return res.json({ student: null });
+  try {
+    const { data, error } = await supabase
+      .from('students')
+      .select('name, phone, grade, level, goal, location')
+      .eq('line_user_id', lineUserId)
+      .single();
+    if (error || !data) return res.json({ student: null });
+    res.json({ student: data });
+  } catch {
+    res.json({ student: null });
+  }
+});
+
+/**
  * GET /api/students
  * 取得學生清單（需登入）
  */
@@ -29,7 +49,11 @@ router.get('/', requireAdmin, async (req, res) => {
  */
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { name, line_user_id, parent_name, phone, notes } = req.body;
+    const name = req.body.name?.trim();
+    const line_user_id = req.body.line_user_id?.trim() || null;
+    const parent_name = req.body.parent_name?.trim() || null;
+    const phone = req.body.phone?.trim() || null;
+    const notes = req.body.notes?.trim() || null;
 
     if (!name) {
       return res.status(400).json({ error: '學生姓名為必填' });
@@ -37,7 +61,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
     const { data, error } = await supabase
       .from('students')
-      .insert([{ name, line_user_id: line_user_id || null, parent_name: parent_name || null, phone: phone || null, notes: notes || null }])
+      .insert([{ name, line_user_id, parent_name, phone, notes }])
       .select()
       .single();
 
@@ -65,11 +89,11 @@ router.patch('/:id', requireAdmin, async (req, res) => {
     const { name, line_user_id, parent_name, phone, notes } = req.body;
 
     const updates = {};
-    if (name !== undefined) updates.name = name;
-    if (line_user_id !== undefined) updates.line_user_id = line_user_id;
-    if (parent_name !== undefined) updates.parent_name = parent_name;
-    if (phone !== undefined) updates.phone = phone;
-    if (notes !== undefined) updates.notes = notes;
+    if (name !== undefined) updates.name = name?.trim();
+    if (line_user_id !== undefined) updates.line_user_id = line_user_id?.trim() || null;
+    if (parent_name !== undefined) updates.parent_name = parent_name?.trim() || null;
+    if (phone !== undefined) updates.phone = phone?.trim() || null;
+    if (notes !== undefined) updates.notes = notes?.trim() || null;
     updates.updated_at = new Date().toISOString();
 
     const { data, error } = await supabase

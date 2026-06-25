@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>行事曆管理</title>
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/admin.css">
+  <style>
+    .cal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .cal-nav-btn {
+      background: #fff; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      padding: 8px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; color: var(--gray-700);
+    }
+    .cal-nav-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .cal-month-title { font-size: 20px; font-weight: 800; color: var(--gray-800); }
+
+    .cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+      margin-bottom: 20px;
+    }
+    .cal-day-name {
+      text-align: center; font-size: 12px; font-weight: 700;
+      color: var(--gray-500); padding: 6px 0;
+    }
+    .cal-day-name:last-child { color: #ef4444; }
+    .cal-cell {
+      background: #fff; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      padding: 8px 6px; min-height: 64px; cursor: pointer; transition: all 0.15s;
+      position: relative;
+    }
+    .cal-cell:hover { border-color: var(--orange); transform: translateY(-1px); }
+    .cal-cell.selected { border-color: var(--orange); background: #fff7ed; }
+    .cal-cell.today .cal-date { background: var(--orange); color: #fff; border-radius: 50%; }
+    .cal-cell.past { opacity: 0.45; cursor: default; }
+    .cal-cell.past:hover { border-color: var(--gray-200); transform: none; }
+    .cal-cell.empty { background: transparent; border-color: transparent; cursor: default; }
+    .cal-cell.empty:hover { border-color: transparent; transform: none; }
+    .cal-cell.holiday { background: #fef2f2; border-color: #fecaca; }
+    .cal-cell.holiday:hover { border-color: #ef4444; }
+    .cal-date {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 24px; height: 24px; font-size: 13px; font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .cal-slots-info { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+    .cal-open-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px;
+      background: #d1fae5; color: #065f46;
+    }
+    .cal-reserved-chip {
+      font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px;
+      background: #ede9fe; color: #5b21b6; max-width: 56px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .cal-booked-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 4px;
+      background: #fed7aa; color: #9a3412;
+    }
+    .cal-holiday-badge {
+      font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px;
+      background: #fecaca; color: #991b1b;
+    }
+
+    /* Day detail panel */
+    .day-panel {
+      background: #fff; border-radius: 12px; box-shadow: var(--shadow);
+      overflow: hidden; margin-bottom: 20px;
+    }
+    .day-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; background: var(--orange); color: #fff;
+    }
+    .day-panel-title { font-size: 16px; font-weight: 700; }
+    .day-panel-close {
+      background: rgba(255,255,255,0.25); border: none; border-radius: 6px;
+      color: #fff; font-size: 16px; width: 28px; height: 28px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .day-panel-actions {
+      display: flex; gap: 8px; padding: 12px 16px 0; flex-wrap: wrap;
+    }
+    .btn-batch {
+      flex: 1; padding: 8px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      background: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; min-width: 100px;
+    }
+    .btn-open-all { border-color: #22c55e; color: #16a34a; }
+    .btn-open-all:hover { background: #f0fdf4; }
+    .btn-close-all { border-color: var(--gray-300); color: var(--gray-600); }
+    .btn-close-all:hover { background: var(--gray-100); }
+    .btn-holiday { border-color: #fca5a5; color: #dc2626; }
+    .btn-holiday:hover { background: #fef2f2; }
+    .btn-holiday.is-holiday { background: #fef2f2; border-color: #ef4444; font-weight: 700; }
+    .btn-holiday.is-holiday:hover { background: #fee2e2; }
+    .holiday-banner {
+      margin: 10px 16px 0; background: #fef2f2; border: 1.5px solid #fecaca;
+      border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #991b1b;
+      font-weight: 600;
+    }
+
+    .slot-list { padding: 12px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .slot-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 8px; cursor: pointer;
+      transition: all 0.15s; font-size: 13px; font-weight: 600; border: 1.5px solid transparent;
+    }
+    .slot-item.open { background: #d1fae5; color: #065f46; border-color: #86efac; }
+    .slot-item.open:hover { background: #a7f3d0; }
+    .slot-item.closed { background: #f9fafb; color: #9ca3af; border-color: #e5e7eb; }
+    .slot-item.closed:hover { background: #f3f4f6; border-color: #d1d5db; }
+    .slot-item.booked { background: #fed7aa; color: #9a3412; border-color: #fdba74; cursor: not-allowed; }
+    .slot-item.reserved { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; cursor: not-allowed; }
+    .slot-time { font-size: 13px; }
+    .slot-label { font-size: 10px; font-weight: 700; opacity: 0.8; }
+    .slot-loading { padding: 32px; text-align: center; color: var(--gray-500); }
+    .slot-holiday-overlay {
+      padding: 24px 16px; text-align: center; color: #991b1b;
+      font-size: 14px; font-weight: 600;
+    }
+
+    @media (max-width: 480px) {
+      .slot-list { grid-template-columns: repeat(2, 1fr); }
+      .cal-cell { min-height: 54px; padding: 6px 4px; }
+      .cal-date { font-size: 12px; width: 20px; height: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="admin-nav">
+    <div class="nav-brand">🏀 籃球家教後台</div>
+    <button class="nav-logout" id="logoutBtn">登出</button>
+  </nav>
+
+  <div class="admin-tabs">
+    <a href="dashboard.html" class="tab">📊 總覽</a>
+    <a href="bookings.html" class="tab">📅 預約管理</a>
+    <a href="calendar.html" class="tab active">🗓️ 行事曆</a>
+    <a href="records.html" class="tab">📸 課程紀錄</a>
+    <a href="students.html" class="tab">👥 學生管理</a>
+    <a href="blacklist.html" class="tab">🚫 黑名單</a>
+  </div>
+
+  <div class="admin-container">
+    <div class="cal-header">
+      <button class="cal-nav-btn" id="prevBtn">← 上個月</button>
+      <div class="cal-month-title" id="monthTitle"></div>
+      <button class="cal-nav-btn" id="nextBtn">下個月 →</button>
+    </div>
+
+    <div id="reservedLegend" style="margin-bottom:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px;color:#6b7280">
+      <span style="font-weight:600">固定保留：</span>
+      <span class="cal-reserved-chip" style="max-width:none;padding:3px 8px">🟣 品樂 週一 18:30–20:00</span>
+      <span class="cal-reserved-chip" style="max-width:none;padding:3px 8px">🟣 昀翰 週五 18:00–20:00</span>
+      <span class="cal-reserved-chip" style="max-width:none;padding:3px 8px">🟣 andrew 週六 09:00–10:00</span>
+      <span class="cal-holiday-badge" style="padding:3px 8px">📵 紅色 = 公休</span>
+    </div>
+
+    <div class="cal-grid" id="calGrid"></div>
+
+    <div class="day-panel" id="dayPanel" style="display:none">
+      <div class="day-panel-header">
+        <span class="day-panel-title" id="dayPanelTitle"></span>
+        <button class="day-panel-close" onclick="closePanel()">✕</button>
+      </div>
+      <div class="day-panel-actions">
+        <button class="btn-batch btn-open-all" onclick="batchAction('open_all')">✅ 全部開放</button>
+        <button class="btn-batch btn-close-all" onclick="batchAction('close_all')">⬜ 全部關閉</button>
+        <button class="btn-batch btn-holiday" id="holidayBtn" onclick="toggleHoliday()">📵 設為公休</button>
+      </div>
+      <div id="holidayBanner" class="holiday-banner" style="display:none"></div>
+      <div class="slot-list" id="slotList">
+        <div class="slot-loading">載入中...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/assets/js/admin-common.js"></script>
+  <script>
+    let currentYear, currentMonth;
+    let monthData = { availability: [], reserved: [], bookings: [], holidays: [] };
+    let selectedDate = null;
+    let currentDayIsHoliday = false;
+    let currentHolidayReason = null;
+
+    const DAY_NAMES = ['日','一','二','三','四','五','六'];
+    const ALL_SLOTS = [
+      '09:00','09:30','10:00','10:30','11:00','11:30','12:00','12:30',
+      '13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30',
+      '17:00','17:30','18:00','18:30','19:00','19:30','20:00','20:30','21:00'
+    ];
+
+    requireLogin(init);
+
+    function init() {
+      const now = new Date();
+      currentYear = now.getFullYear();
+      currentMonth = now.getMonth() + 1;
+      loadMonth();
+
+      document.getElementById('prevBtn').onclick = () => {
+        currentMonth--;
+        if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+        closePanel();
+        loadMonth();
+      };
+      document.getElementById('nextBtn').onclick = () => {
+        currentMonth++;
+        if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+        closePanel();
+        loadMonth();
+      };
+    }
+
+    async function loadMonth() {
+      document.getElementById('calGrid').innerHTML =
+        '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#9ca3af">載入中...</div>';
+      try {
+        const res = await fetch(`/api/availability/month?year=${currentYear}&month=${currentMonth}`);
+        if (!res.ok) throw new Error(await res.text());
+        monthData = await res.json();
+        monthData.holidays = monthData.holidays || [];
+        renderCalendar();
+        if (selectedDate) loadDayDetail(selectedDate);
+      } catch (err) {
+        document.getElementById('calGrid').innerHTML =
+          '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#ef4444">載入失敗</div>';
+      }
+    }
+
+    function renderCalendar() {
+      const year = currentYear, month = currentMonth;
+      document.getElementById('monthTitle').textContent = `${year} 年 ${month} 月`;
+
+      const firstDay = new Date(year, month - 1, 1).getDay();
+      const daysInMonth = new Date(year, month, 0).getDate();
+      const today = new Date().toISOString().split('T')[0];
+
+      const availByDate = {};
+      monthData.availability.forEach(a => {
+        if (!availByDate[a.date]) availByDate[a.date] = [];
+        availByDate[a.date].push(a);
+      });
+
+      const bookingsByDate = {};
+      monthData.bookings.forEach(b => {
+        if (!bookingsByDate[b.date]) bookingsByDate[b.date] = [];
+        bookingsByDate[b.date].push(b);
+      });
+
+      const holidaySet = new Set((monthData.holidays || []).map(h => h.date));
+
+      let html = '';
+      for (let i = 0; i < 7; i++) {
+        html += `<div class="cal-day-name">${DAY_NAMES[i]}</div>`;
+      }
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="cal-cell empty"></div>';
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const isPast = dateStr < today;
+        const isToday = dateStr === today;
+        const isSelected = dateStr === selectedDate;
+        const dbWeekday = (() => { const j = new Date(dateStr + 'T00:00:00').getDay(); return j === 0 ? 7 : j; })();
+        const isHoliday = holidaySet.has(dateStr);
+
+        const slots = availByDate[dateStr] || [];
+        const openCount = slots.filter(s => s.status === 'open').length;
+        const bookings = bookingsByDate[dateStr] || [];
+        const reservedForDay = monthData.reserved.filter(r => r.weekday === dbWeekday);
+
+        let classes = 'cal-cell';
+        if (isPast) classes += ' past';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        if (isHoliday) classes += ' holiday';
+
+        const onclick = isPast ? '' : `onclick="selectDay('${dateStr}')"`;
+
+        let badgesHtml = '';
+        if (isHoliday) {
+          const h = (monthData.holidays || []).find(h => h.date === dateStr);
+          badgesHtml += `<span class="cal-holiday-badge">📵 ${h?.reason || '公休'}</span>`;
+        } else {
+          if (openCount > 0) badgesHtml += `<span class="cal-open-badge">開放 ${openCount}</span>`;
+          if (bookings.length > 0) badgesHtml += `<span class="cal-booked-badge">預約 ${bookings.length}</span>`;
+          reservedForDay.forEach(r => {
+            badgesHtml += `<span class="cal-reserved-chip">${r.student_name}</span>`;
+          });
+        }
+
+        html += `
+          <div class="${classes}" ${onclick}>
+            <div class="cal-date">${d}</div>
+            <div class="cal-slots-info">${badgesHtml}</div>
+          </div>`;
+      }
+
+      document.getElementById('calGrid').innerHTML = html;
+    }
+
+    function selectDay(date) {
+      selectedDate = date;
+      renderCalendar();
+      document.getElementById('dayPanel').style.display = 'block';
+      document.getElementById('dayPanelTitle').textContent =
+        date + ' (' + DAY_NAMES[new Date(date + 'T00:00:00').getDay()] + ')';
+      loadDayDetail(date);
+      document.getElementById('dayPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closePanel() {
+      selectedDate = null;
+      document.getElementById('dayPanel').style.display = 'none';
+      renderCalendar();
+    }
+
+    async function loadDayDetail(date) {
+      document.getElementById('slotList').innerHTML = '<div class="slot-loading">載入時段...</div>';
+      document.getElementById('holidayBanner').style.display = 'none';
+      try {
+        const res = await fetch(`/api/availability/day?date=${date}`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        currentDayIsHoliday = !!data.is_holiday;
+        currentHolidayReason = data.holiday_reason;
+        updateHolidayBtn();
+        if (currentDayIsHoliday) {
+          const banner = document.getElementById('holidayBanner');
+          banner.textContent = `📵 公休日${currentHolidayReason ? '：' + currentHolidayReason : ''} — 學生端顯示為「休」，無法預約`;
+          banner.style.display = 'block';
+          document.getElementById('slotList').innerHTML =
+            '<div class="slot-holiday-overlay">📵 此為公休日，所有時段對學生隱藏</div>';
+        } else {
+          renderSlots(date, data.slots);
+        }
+      } catch {
+        document.getElementById('slotList').innerHTML = '<div class="slot-loading">載入失敗</div>';
+      }
+    }
+
+    function updateHolidayBtn() {
+      const btn = document.getElementById('holidayBtn');
+      if (currentDayIsHoliday) {
+        btn.textContent = '✅ 取消公休';
+        btn.classList.add('is-holiday');
+      } else {
+        btn.textContent = '📵 設為公休';
+        btn.classList.remove('is-holiday');
+      }
+    }
+
+    async function toggleHoliday() {
+      if (!selectedDate) return;
+      if (currentDayIsHoliday) {
+        if (!confirm(`確認取消 ${selectedDate} 的公休？學生將可看到此日的開放時段。`)) return;
+        try {
+          const res = await fetch(`/api/availability/holidays/${selectedDate}`, { method: 'DELETE' });
+          if (!res.ok) { showToast('操作失敗', 'error'); return; }
+          showToast('已取消公休');
+          loadMonth();
+          loadDayDetail(selectedDate);
+        } catch { showToast('操作失敗', 'error'); }
+      } else {
+        const reason = prompt(`將 ${selectedDate} 設為公休\n\n請輸入原因（可空白，例如：進修、休假）：`);
+        if (reason === null) return;
+        try {
+          const res = await fetch('/api/availability/holidays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: selectedDate, reason: reason.trim() || null })
+          });
+          if (!res.ok) { showToast('設定失敗', 'error'); return; }
+          showToast('已設為公休');
+          loadMonth();
+          loadDayDetail(selectedDate);
+        } catch { showToast('操作失敗', 'error'); }
+      }
+    }
+
+    function renderSlots(date, slots) {
+      const html = slots.map(slot => {
+        let cls, label, extra = '';
+        if (slot.reserved) {
+          cls = 'reserved'; label = slot.reserved; extra = '🟣';
+        } else if (slot.is_continuation) {
+          cls = 'booked';
+          label = '↪ ' + (slot.continuation_of?.student_name || '承上');
+          extra = '';
+        } else if (slot.status === 'booked') {
+          const dur = slot.booking?.duration;
+          const durLabel = dur === 90 ? ' 1.5h' : '';
+          cls = 'booked';
+          label = (slot.booking?.student_name || '已預約') + durLabel;
+          extra = '🔒';
+        } else if (slot.status === 'open') {
+          cls = 'open'; label = '開放中'; extra = '✅';
+        } else {
+          cls = 'closed'; label = '不開放'; extra = '';
+        }
+
+        const clickable = !slot.reserved && slot.status !== 'booked' && !slot.is_continuation;
+        const onclick = clickable ? `onclick="toggleSlot('${date}','${slot.time_slot}')"` : '';
+
+        return `<div class="slot-item ${cls}" ${onclick}>
+          <span class="slot-time">${slot.time_slot}</span>
+          <span class="slot-label">${extra}${extra ? ' ' : ''}${label}</span>
+        </div>`;
+      }).join('');
+
+      document.getElementById('slotList').innerHTML = html;
+    }
+
+    async function toggleSlot(date, timeSlot) {
+      try {
+        const res = await fetch('/api/availability/toggle', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date, time_slot: timeSlot })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error, 'error'); return; }
+        loadDayDetail(date);
+        loadMonth();
+      } catch { showToast('操作失敗', 'error'); }
+    }
+
+    async function batchAction(action) {
+      if (!selectedDate) return;
+      const label = action === 'open_all' ? '全部開放' : '全部關閉';
+      if (!confirm(`確認要將 ${selectedDate} ${label}？`)) return;
+      try {
+        const res = await fetch('/api/availability/batch', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: selectedDate, action })
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error, 'error'); return; }
+        showToast(label + ' 完成');
+        loadDayDetail(selectedDate);
+        loadMonth();
+      } catch { showToast('操作失敗', 'error'); }
+    }
+  </script>
+</body>
+</html>

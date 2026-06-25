@@ -4,182 +4,631 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>預約課程</title>
+  <link rel="preconnect" href="https://static.line-scdn.net">
+  <link rel="dns-prefetch" href="https://static.line-scdn.net">
   <link rel="stylesheet" href="/assets/css/common.css">
   <script src="/config.js"></script>
-  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/versions/2.22.3/sdk.js"></script>
   <style>
-    .session-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-top: 6px;
+    :root { --brand: #FF6B00; --brand-dark: #e85f00; --brand-light: #fff3eb; }
+    body { background: #fff8f3; }
+    .page-header {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
+      color: #fff; padding: 24px 16px 20px; text-align: center;
+      position: relative; overflow: hidden; margin-bottom: 16px;
     }
-    .session-option {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px 8px;
-      border: 2px solid var(--gray-200);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
+    .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
+    .page-header .ball { position: absolute; font-size: 120px; opacity: 0.15; right: -20px; top: -20px; transform: rotate(-15deg); }
+    .notice-tip {
+      background: var(--brand-light); border-left: 4px solid var(--brand);
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+      font-size: 13px; color: #7a3e00; line-height: 1.7;
     }
-    .session-option input[type="radio"] { display: none; }
-    .session-option.selected {
-      border-color: var(--orange);
-      background: #fff7ed;
+    .notice-tip strong { color: var(--brand-dark); }
+    .returning-banner {
+      background: #ecfdf5; border-left: 4px solid #22c55e;
+      border-radius: 8px; padding: 12px 14px; margin-bottom: 16px;
+      font-size: 13px; color: #166534; line-height: 1.6;
     }
-    .session-option .icon { font-size: 24px; margin-bottom: 4px; }
-    .session-option .label { font-size: 13px; font-weight: 600; }
-    .session-option .time { font-size: 11px; color: var(--gray-600); }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .level-tabs { display: flex; gap: 8px; }
+    .level-tab {
+      flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; background: #fff; font-size: 13px; font-weight: 600;
+      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .level-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+
+    /* ── Booking Calendar ── */
+    .bk-cal-wrap { padding: 12px 12px 16px; }
+    .bk-cal-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    }
+    .bk-cal-nav {
+      background: none; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      width: 34px; height: 34px; font-size: 18px; cursor: pointer; color: var(--gray-600);
+      display: flex; align-items: center; justify-content: center; line-height: 1;
+      transition: all 0.15s;
+    }
+    .bk-cal-nav:hover { border-color: var(--brand); color: var(--brand); }
+    .bk-cal-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+    .bk-month-label { font-size: 16px; font-weight: 800; color: var(--gray-800); }
+    .bk-legend {
+      display: flex; align-items: center; gap: 12px; font-size: 12px; color: #6b7280;
+      margin-bottom: 10px; flex-wrap: wrap;
+    }
+    .bk-legend-item { display: flex; align-items: center; gap: 4px; }
+    .bk-legend-dot {
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    }
+    .bk-cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+    }
+    .bk-day-name {
+      text-align: center; font-size: 11px; font-weight: 700;
+      color: #9ca3af; padding: 4px 0; margin-bottom: 2px;
+    }
+    .bk-day-name:last-child { color: #ef4444; }
+    .bk-cell {
+      border-radius: 8px; min-height: 48px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; border: 1.5px solid transparent;
+      transition: all 0.15s; user-select: none;
+    }
+    .bk-cell-date {
+      font-size: 14px; font-weight: 700; line-height: 1;
+      width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+    }
+    .bk-cell-status { font-size: 9px; font-weight: 700; margin-top: 2px; letter-spacing: 0.02em; }
+    .bk-cell.empty { border-color: transparent; background: transparent; }
+    .bk-cell.past { background: #f9fafb; border-color: #f3f4f6; cursor: not-allowed; }
+    .bk-cell.past .bk-cell-date { color: #d1d5db; }
+    .bk-cell.available {
+      background: #f0fdf4; border-color: #bbf7d0; cursor: pointer;
+    }
+    .bk-cell.available:active { transform: scale(0.95); }
+    .bk-cell.available .bk-cell-date { color: #15803d; }
+    .bk-cell.available .bk-cell-status { color: #16a34a; }
+    .bk-cell.available.selected {
+      background: #22c55e; border-color: #16a34a; transform: none;
+    }
+    .bk-cell.available.selected .bk-cell-date { color: #fff; background: transparent; }
+    .bk-cell.available.selected .bk-cell-status { color: rgba(255,255,255,0.9); }
+    .bk-cell.full { background: #fef2f2; border-color: #fecaca; cursor: not-allowed; }
+    .bk-cell.full .bk-cell-date { color: #b91c1c; }
+    .bk-cell.full .bk-cell-status { color: #dc2626; }
+    .bk-cell.closed { background: #f9fafb; border-color: #e5e7eb; cursor: not-allowed; }
+    .bk-cell.closed .bk-cell-date { color: #9ca3af; }
+    .bk-cell.closed .bk-cell-status { color: #9ca3af; }
+    .bk-cell.today-mark .bk-cell-date { background: var(--brand); color: #fff; }
+    .bk-cell.available.today-mark .bk-cell-date { background: var(--brand); color: #fff; }
+    .bk-cell.available.selected.today-mark .bk-cell-date { background: rgba(255,255,255,0.3); color: #fff; }
+
+    /* Duration tabs */
+    .duration-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+    .dur-tab {
+      flex: 1; padding: 10px 8px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; background: #fff; font-size: 13px; font-weight: 700;
+      color: var(--gray-600); cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .dur-tab.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+
+    /* Slot picker */
+    .slot-section {
+      border-top: 2px solid var(--brand-light); padding: 14px 12px 6px;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .slot-section-title { font-size: 14px; font-weight: 700; color: var(--brand-dark); margin-bottom: 10px; }
+    .slot-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    }
+    .slot-btn {
+      padding: 10px 4px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      background: #fff; font-size: 13px; font-weight: 600; color: var(--gray-700);
+      cursor: pointer; text-align: center; transition: all 0.2s;
+    }
+    .slot-btn:hover { border-color: var(--brand); background: var(--brand-light); }
+    .slot-btn.selected { border-color: var(--brand); background: var(--brand-light); color: var(--brand-dark); }
+    .slot-loading-msg { font-size: 13px; color: #9ca3af; padding: 12px 0; }
+    .slot-empty-msg { font-size: 13px; color: #ef4444; padding: 10px 12px; background: #fef2f2; border-radius: 8px; }
+
+    .required-hint { font-size: 12px; color: #9ca3af; font-weight: normal; margin-left: 4px; }
+    .success-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.97);
+      z-index: 2000; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 24px;
+    }
+    .success-overlay.active { display: flex; }
+    .checkmark-circle {
+      width: 96px; height: 96px; border-radius: 50%; background: var(--brand);
+      display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+      animation: pop 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .checkmark-circle svg { width: 50px; height: 50px; }
+    .checkmark-circle svg path {
+      stroke: #fff; stroke-width: 6; fill: none;
+      stroke-dasharray: 60; stroke-dashoffset: 60;
+      animation: draw 0.5s 0.3s forwards ease-out;
+    }
+    @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    .success-overlay h2 { font-size: 22px; color: var(--brand-dark); margin-bottom: 10px; }
+    .success-overlay .detail {
+      background: var(--brand-light); border-radius: 10px;
+      padding: 16px 20px; font-size: 14px; color: #5c3000; line-height: 1.9; margin-top: 8px;
+    }
+    .success-overlay .hint { font-size: 12px; color: #9ca3af; margin-top: 16px; }
   </style>
 </head>
 <body>
   <header class="page-header">
+    <span class="ball">🏀</span>
     <h1>📅 預約課程</h1>
+    <div class="subtitle">選擇日期與時段，輕鬆完成預約</div>
   </header>
 
   <div class="container">
-    <div id="loading" class="loading">初始化中...</div>
+    <div id="loading" class="loading"><div class="spinner"></div>初始化中...</div>
     <div id="main" style="display:none">
+
+      <div id="returningBanner" class="returning-banner" style="display:none">
+        👋 <strong>歡迎回來！</strong>已為您帶入上次的資料，確認後選擇日期和時段即可送出。
+      </div>
+
+      <div class="notice-tip">
+        <strong>📌 預約須知</strong><br>
+        • 請於上課<strong>前 3 天</strong>提出預約，方便教練安排<br>
+        • 送出後教練會審核，並透過 <strong>LINE 通知</strong>您結果<br>
+        • 如需取消或改期，請提前 <strong>24 小時</strong>告知
+      </div>
+
+      <!-- 月曆選日期 + 時段 -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+        <div class="bk-cal-wrap">
+          <!-- 月份導覽 -->
+          <div class="bk-cal-header">
+            <button class="bk-cal-nav" id="bkPrevBtn">‹</button>
+            <span class="bk-month-label" id="bkMonthLabel"></span>
+            <button class="bk-cal-nav" id="bkNextBtn">›</button>
+          </div>
+          <!-- 圖例 -->
+          <div class="bk-legend">
+            <div class="bk-legend-item">
+              <div class="bk-legend-dot" style="background:#22c55e"></div>
+              <span>可預約</span>
+            </div>
+            <div class="bk-legend-item">
+              <div class="bk-legend-dot" style="background:#ef4444"></div>
+              <span>滿</span>
+            </div>
+            <div class="bk-legend-item">
+              <div class="bk-legend-dot" style="background:#d1d5db"></div>
+              <span>休／未開放</span>
+            </div>
+          </div>
+          <!-- 日曆格 -->
+          <div class="bk-cal-grid" id="bkCalGrid">
+            <div style="grid-column:1/-1;text-align:center;padding:20px;color:#9ca3af;font-size:13px">載入中...</div>
+          </div>
+        </div>
+
+        <!-- 時段選擇（點擊可預約日期後展開） -->
+        <div class="slot-section" id="slotSection" style="display:none">
+          <div class="slot-section-title" id="slotSectionTitle"></div>
+          <!-- 課程長度 -->
+          <div class="duration-tabs" role="group" aria-label="選擇課程長度">
+            <div class="dur-tab active" id="durTab60" onclick="selectDuration(60, this)">⏱ 1 小時</div>
+            <div class="dur-tab" id="durTab90" onclick="selectDuration(90, this)">⏱ 1.5 小時</div>
+          </div>
+          <div id="slotPickerWrap">
+            <div class="slot-loading-msg">載入中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 預約表單 -->
       <div class="card">
-        <form id="bookingForm">
+        <form id="bookingForm" novalidate>
+          <input type="hidden" id="date">
+
+          <!-- 學生姓名 -->
           <div class="form-group">
-            <label>學生姓名 *</label>
-            <input type="text" id="studentName" placeholder="請輸入學生姓名" required maxlength="50">
+            <label for="studentName">學生姓名 <span style="color:var(--brand)">*</span></label>
+            <input type="text" id="studentName" aria-required="true"
+              placeholder="請輸入學生姓名" required maxlength="50" autocomplete="name">
           </div>
 
+          <!-- 年級 -->
           <div class="form-group">
-            <label>上課日期 *</label>
-            <input type="date" id="date" required>
+            <label for="grade">學生年級 <span style="color:var(--brand)">*</span></label>
+            <select id="grade" aria-required="true" required>
+              <option value="">請選擇年級</option>
+              <option value="國小低年級">國小低年級（1-2年級）</option>
+              <option value="國小中年級">國小中年級（3-4年級）</option>
+              <option value="國小高年級">國小高年級（5-6年級）</option>
+              <option value="國中">國中</option>
+              <option value="高中">高中</option>
+              <option value="成人">成人</option>
+            </select>
           </div>
 
+          <!-- 籃球程度 -->
           <div class="form-group">
-            <label>上課時段 *</label>
-            <div class="session-grid">
-              <label class="session-option" id="opt-morning">
-                <input type="radio" name="session" value="morning">
-                <span class="icon">🌅</span>
-                <span class="label">早上</span>
-                <span class="time">09:00-12:00</span>
-              </label>
-              <label class="session-option" id="opt-afternoon">
-                <input type="radio" name="session" value="afternoon">
-                <span class="icon">☀️</span>
-                <span class="label">下午</span>
-                <span class="time">13:00-17:00</span>
-              </label>
-              <label class="session-option" id="opt-evening">
-                <input type="radio" name="session" value="evening">
-                <span class="icon">🌙</span>
-                <span class="label">晚上</span>
-                <span class="time">18:00-21:00</span>
-              </label>
+            <label>籃球程度 <span style="color:var(--brand)">*</span></label>
+            <div class="level-tabs" role="group" aria-label="選擇籃球程度">
+              <div class="level-tab" data-level="初學者" role="button" tabindex="0"
+                onclick="selectLevel('初學者', this)">🔰 初學者</div>
+              <div class="level-tab" data-level="有基礎" role="button" tabindex="0"
+                onclick="selectLevel('有基礎', this)">⭐ 有基礎</div>
+              <div class="level-tab" data-level="進階" role="button" tabindex="0"
+                onclick="selectLevel('進階', this)">🏆 進階</div>
             </div>
           </div>
 
+          <!-- 聯絡電話 -->
           <div class="form-group">
-            <label>備註（選填）</label>
-            <textarea id="notes" placeholder="例如：需要加強三分球投籃、第一次上課等" maxlength="200"></textarea>
+            <label for="phone">聯絡電話 <span style="color:var(--brand)">*</span></label>
+            <input type="tel" id="phone" aria-required="true"
+              placeholder="例如：0912-345-678" maxlength="20" autocomplete="tel">
           </div>
 
-          <div id="alertBox"></div>
+          <!-- 理想地區 -->
+          <div class="form-group">
+            <label for="location">理想地區或球場<span class="required-hint">（選填）</span></label>
+            <input type="text" id="location"
+              placeholder="例如：內湖運動中心、河濱球場、或您方便的地區" maxlength="100">
+          </div>
 
-          <button type="submit" class="btn btn-primary" id="submitBtn">
-            📅 送出預約
-          </button>
+          <!-- 訓練目標 -->
+          <div class="form-group">
+            <label for="goal">訓練目標<span class="required-hint">（選填）</span></label>
+            <input type="text" id="goal"
+              placeholder="例如：加強投籃、想進校隊、基礎體能" maxlength="100">
+          </div>
+
+          <!-- 備註 -->
+          <div class="form-group">
+            <label for="notes">備註<span class="required-hint">（選填）</span></label>
+            <textarea id="notes" placeholder="其他補充說明" maxlength="200"></textarea>
+          </div>
+
+          <div id="alertBox" role="alert" aria-live="assertive"></div>
+
+          <button type="submit" class="btn btn-primary" id="submitBtn" aria-label="送出預約表單">🏀 送出預約</button>
         </form>
       </div>
     </div>
   </div>
 
+  <div class="success-overlay" id="successOverlay">
+    <div class="checkmark-circle">
+      <svg viewBox="0 0 60 60"><path d="M14 30 L26 42 L46 18"/></svg>
+    </div>
+    <h2>預約成功！</h2>
+    <p style="color:#6b7280;font-size:14px">教練確認後將透過 LINE 通知您</p>
+    <div class="detail" id="successDetail"></div>
+    <div class="hint">視窗將自動關閉…</div>
+  </div>
+
   <script>
     let lineUserId = null;
+    let selectedLevel = '';
+    let selectedSlot = '';
+    let selectedDate = '';
+    let selectedDuration = 60;
+    let allAvailableSlots = [];
 
-    // 設定日期最小值為今天
-    document.getElementById('date').min = new Date().toISOString().split('T')[0];
-    // 預設選擇三天後
-    const defaultDate = new Date();
-    defaultDate.setDate(defaultDate.getDate() + 3);
-    document.getElementById('date').value = defaultDate.toISOString().split('T')[0];
+    function calcEndTime(slot, durationMins) {
+      const [h, m] = slot.split(':').map(Number);
+      const total = h * 60 + m + durationMins;
+      return `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+    }
 
-    // 時段選項點擊效果
-    document.querySelectorAll('.session-option').forEach(el => {
-      el.addEventListener('click', () => {
-        document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-        el.classList.add('selected');
-      });
-    });
+    // Calendar state
+    const DAY_NAMES = ['日','一','二','三','四','五','六'];
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    let calYear = today.getFullYear();
+    let calMonth = today.getMonth() + 1; // 1-based
+    const maxYear = today.getMonth() >= 11
+      ? today.getFullYear() + 1
+      : today.getFullYear();
+    const maxMonth = today.getMonth() >= 11
+      ? 1
+      : today.getMonth() + 2; // 最多顯示下個月
 
-    async function init() {
+    let calendarCache = {}; // month-key → { date: status }
+
+    // ── Calendar Rendering ──
+
+    function calMonthKey(y, m) {
+      return `${y}-${String(m).padStart(2,'0')}`;
+    }
+
+    async function loadCalendarMonth(y, m) {
+      const key = calMonthKey(y, m);
+      if (calendarCache[key]) { renderCalendar(y, m, calendarCache[key]); return; }
+      document.getElementById('bkCalGrid').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#9ca3af;font-size:13px">載入中...</div>';
       try {
-        const liffId = window.APP_CONFIG?.liffIdBooking || '2010463411-WejiNtQk';
-        await liff.init({ liffId });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        lineUserId = profile.userId;
-
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('main').style.display = 'block';
-      } catch (err) {
-        console.error('LIFF 初始化失敗:', err);
-        document.getElementById('loading').innerHTML = '❌ 初始化失敗，請關閉後重新開啟';
+        const res = await fetch(`/api/availability/calendar?month=${key}`);
+        const data = await res.json();
+        calendarCache[key] = data.calendar || {};
+        renderCalendar(y, m, calendarCache[key]);
+      } catch {
+        document.getElementById('bkCalGrid').innerHTML =
+          '<div style="grid-column:1/-1;text-align:center;padding:20px;color:#ef4444;font-size:13px">載入失敗，請重新整理</div>';
       }
     }
 
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    function renderCalendar(y, m, statusMap) {
+      document.getElementById('bkMonthLabel').textContent = `${y} 年 ${m} 月`;
 
-      const studentName = document.getElementById('studentName').value.trim();
-      const date = document.getElementById('date').value;
-      const session = document.querySelector('input[name="session"]:checked')?.value;
-      const notes = document.getElementById('notes').value.trim();
+      // Update nav buttons
+      const isPrevDisabled = (y < today.getFullYear()) ||
+        (y === today.getFullYear() && m <= today.getMonth() + 1);
+      const isNextDisabled = (y > maxYear) ||
+        (y === maxYear && m >= maxMonth);
+      document.getElementById('bkPrevBtn').disabled = isPrevDisabled;
+      document.getElementById('bkNextBtn').disabled = isNextDisabled;
 
-      if (!studentName || !date || !session) {
-        showAlert('error', '請填寫學生姓名、日期，並選擇時段');
+      const firstDay = new Date(y, m - 1, 1).getDay();
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const key = calMonthKey(y, m);
+
+      let html = '';
+      for (let i = 0; i < 7; i++) {
+        html += `<div class="bk-day-name">${DAY_NAMES[i]}</div>`;
+      }
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="bk-cell empty"></div>';
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${key}-${String(d).padStart(2,'0')}`;
+        const status = statusMap[dateStr] || (dateStr < todayStr ? 'past' : 'closed');
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedDate;
+
+        let classes = `bk-cell ${status}`;
+        if (isToday && status !== 'past') classes += ' today-mark';
+        if (isSelected && status === 'available') classes += ' selected';
+
+        const statusLabel = { available: '可預約', full: '滿', closed: '休', past: '' }[status] || '';
+        const onclick = status === 'available' ? `onclick="selectCalDate('${dateStr}')"` : '';
+
+        html += `<div class="${classes}" ${onclick}>
+          <div class="bk-cell-date">${d}</div>
+          ${statusLabel ? `<div class="bk-cell-status">${statusLabel}</div>` : ''}
+        </div>`;
+      }
+
+      document.getElementById('bkCalGrid').innerHTML = html;
+    }
+
+    function changeBkMonth(delta) {
+      calMonth += delta;
+      if (calMonth > 12) { calMonth = 1; calYear++; }
+      if (calMonth < 1) { calMonth = 12; calYear--; }
+      // Reset slot if month changed
+      if (selectedDate && !selectedDate.startsWith(calMonthKey(calYear, calMonth))) {
+        clearSlotSelection();
+      }
+      loadCalendarMonth(calYear, calMonth);
+    }
+
+    document.getElementById('bkPrevBtn').onclick = () => changeBkMonth(-1);
+    document.getElementById('bkNextBtn').onclick = () => changeBkMonth(1);
+
+    // ── Date + Slot Selection ──
+
+    function selectCalDate(dateStr) {
+      selectedDate = dateStr;
+      selectedSlot = '';
+      document.getElementById('date').value = dateStr;
+
+      // Re-render calendar to show selected state
+      const key = calMonthKey(calYear, calMonth);
+      renderCalendar(calYear, calMonth, calendarCache[key] || {});
+
+      // Load slots
+      const weekDay = ['日','一','二','三','四','五','六'][new Date(dateStr + 'T00:00:00').getDay()];
+      document.getElementById('slotSectionTitle').textContent = `📅 ${dateStr}（週${weekDay}）可用時段`;
+      document.getElementById('slotSection').style.display = 'block';
+      loadSlots(dateStr);
+      document.getElementById('slotSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function clearSlotSelection() {
+      selectedDate = '';
+      selectedSlot = '';
+      document.getElementById('date').value = '';
+      document.getElementById('slotSection').style.display = 'none';
+    }
+
+    async function loadSlots(date) {
+      const wrap = document.getElementById('slotPickerWrap');
+      wrap.innerHTML = '<div class="slot-loading-msg">載入可用時段中...</div>';
+      selectedSlot = '';
+      try {
+        const res = await fetch(`/api/availability?date=${date}`);
+        if (!res.ok) throw new Error();
+        const { slots } = await res.json();
+        allAvailableSlots = slots || [];
+        renderSlotsForDuration();
+      } catch {
+        wrap.innerHTML = '<div class="slot-empty-msg">時段載入失敗，請重新整理</div>';
+      }
+    }
+
+    function renderSlotsForDuration() {
+      const wrap = document.getElementById('slotPickerWrap');
+      selectedSlot = '';
+      if (allAvailableSlots.length === 0) {
+        wrap.innerHTML = '<div class="slot-empty-msg">此日期目前無可預約時段，請選擇其他日期或聯絡教練</div>';
         return;
       }
 
+      let slots = allAvailableSlots;
+      if (selectedDuration === 90) {
+        const slotSet = new Set(allAvailableSlots.map(s => s.time_slot));
+        slots = allAvailableSlots.filter(s => {
+          const [h, m] = s.time_slot.split(':').map(Number);
+          const total = h * 60 + m + 30;
+          const nextSlot = `${String(Math.floor(total / 60)).padStart(2,'0')}:${String(total % 60).padStart(2,'0')}`;
+          return slotSet.has(nextSlot);
+        });
+      }
+
+      if (slots.length === 0) {
+        wrap.innerHTML = '<div class="slot-empty-msg">此日期無連續可用時段（1.5 小時），請選 1 小時或其他日期</div>';
+        return;
+      }
+
+      wrap.innerHTML = '<div class="slot-grid">' +
+        slots.map(s => {
+          const endTime = calcEndTime(s.time_slot, selectedDuration);
+          return `<div class="slot-btn" data-slot="${s.time_slot}" onclick="selectSlot('${s.time_slot}', this)">
+            <div>${s.time_slot}</div>
+            <div style="font-size:10px;color:#9ca3af">–${endTime}</div>
+          </div>`;
+        }).join('') + '</div>';
+    }
+
+    function selectDuration(dur, el) {
+      selectedDuration = dur;
+      document.querySelectorAll('.dur-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+      if (allAvailableSlots.length > 0) renderSlotsForDuration();
+    }
+
+    function selectSlot(slot, el) {
+      selectedSlot = slot;
+      document.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function selectLevel(level, el) {
+      selectedLevel = level;
+      document.querySelectorAll('.level-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    document.querySelectorAll('.level-tab').forEach(tab => {
+      tab.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectLevel(tab.dataset.level, tab);
+        }
+      });
+    });
+
+    // ── Profile Auto-fill ──
+
+    async function loadProfile(uid) {
+      try {
+        const res = await fetch(`/api/students/profile?lineUserId=${encodeURIComponent(uid)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.student) return;
+        const s = data.student;
+        if (s.name) document.getElementById('studentName').value = s.name;
+        if (s.grade) document.getElementById('grade').value = s.grade;
+        if (s.level) {
+          const el = document.querySelector(`.level-tab[data-level="${s.level}"]`);
+          if (el) selectLevel(s.level, el);
+        }
+        if (s.phone) document.getElementById('phone').value = s.phone;
+        if (s.location) document.getElementById('location').value = s.location;
+        if (s.goal) document.getElementById('goal').value = s.goal;
+        document.getElementById('returningBanner').style.display = 'block';
+      } catch { /* 新用戶，靜默 */ }
+    }
+
+    // ── LIFF Init ──
+
+    async function init() {
+      try {
+        const liffId = window.APP_CONFIG?.liffIdBooking || '';
+        await liff.init({ liffId });
+        if (!liff.isLoggedIn()) { liff.login(); return; }
+        const profile = await liff.getProfile();
+        lineUserId = profile.userId;
+        await loadProfile(lineUserId);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        // Load current month calendar
+        loadCalendarMonth(calYear, calMonth);
+      } catch (err) {
+        console.error('LIFF 初始化失敗:', err);
+        document.getElementById('loading').innerHTML =
+          '<div style="color:#991b1b;font-size:15px">❌ 初始化失敗</div>' +
+          '<p style="font-size:13px;color:#6b7280;margin-top:8px">請關閉視窗後重新開啟，或確認網路連線正常。</p>';
+      }
+    }
+
+    // ── Form Submit ──
+
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const studentName = document.getElementById('studentName').value.trim();
+      const grade = document.getElementById('grade').value;
+      const level = selectedLevel;
+      const phone = document.getElementById('phone').value.trim();
+      const date = selectedDate;
+      const session = selectedSlot;
+      const location = document.getElementById('location').value.trim();
+      const goal = document.getElementById('goal').value.trim();
+      const notes = document.getElementById('notes').value.trim();
+
+      if (!studentName) { showAlert('請填寫學生姓名'); return; }
+      if (!grade) { showAlert('請選擇學生年級'); return; }
+      if (!level) { showAlert('請選擇籃球程度'); return; }
+      if (!phone) { showAlert('請填寫聯絡電話'); return; }
+      if (!/^[\d\-\+\s\(\)]{8,20}$/.test(phone)) { showAlert('請輸入有效的電話號碼（數字、-、+）'); return; }
+      if (!date) { showAlert('請在月曆上選擇上課日期'); return; }
+      if (!session) { showAlert('請選擇上課時段'); return; }
+
       const btn = document.getElementById('submitBtn');
-      btn.disabled = true;
-      btn.textContent = '送出中...';
+      btn.disabled = true; btn.textContent = '送出中...';
 
       try {
+        const endTime = calcEndTime(session, selectedDuration);
         const res = await fetch('/api/bookings', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ line_user_id: lineUserId, student_name: studentName, date, session, notes })
+          body: JSON.stringify({
+            line_user_id: lineUserId,
+            student_name: studentName,
+            grade, level, phone, date, session,
+            duration: selectedDuration,
+            location: location || null,
+            goal: goal || null,
+            notes: notes || null
+          })
         });
-
         const data = await res.json();
-
         if (res.ok) {
-          showAlert('success', '✅ 預約成功！教練確認後會透過 LINE 通知您。');
-          document.getElementById('bookingForm').reset();
-          document.querySelectorAll('.session-option').forEach(o => o.classList.remove('selected'));
-          document.getElementById('date').value = new Date(Date.now() + 3*86400000).toISOString().split('T')[0];
-          setTimeout(() => liff.closeWindow(), 3000);
+          document.getElementById('successDetail').innerHTML =
+            `👤 ${studentName}（${grade}・${level}）<br>📅 ${date}<br>⏰ ${session}–${endTime}（${selectedDuration === 90 ? '1.5 小時' : '1 小時'}）${location ? '<br>📍 ' + location : ''}`;
+          document.getElementById('successOverlay').classList.add('active');
+          setTimeout(() => { if (liff.isInClient()) liff.closeWindow(); }, 3500);
         } else {
-          showAlert('error', data.error || '預約失敗，請稍後再試');
+          showAlert(data.error || '預約失敗，請稍後再試');
+          btn.disabled = false; btn.textContent = '🏀 送出預約';
         }
-      } catch (err) {
-        showAlert('error', '網路錯誤，請稍後再試');
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '📅 送出預約';
+      } catch {
+        showAlert('網路錯誤，請稍後再試');
+        btn.disabled = false; btn.textContent = '🏀 送出預約';
       }
     });
 
-    function showAlert(type, msg) {
+    function showAlert(msg) {
       const box = document.getElementById('alertBox');
-      box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+      box.innerHTML = `<div class="alert alert-error">${msg}</div>`;
       box.scrollIntoView({ behavior: 'smooth' });
     }
 

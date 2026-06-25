@@ -6,148 +6,227 @@
   <title>上課須知</title>
   <link rel="stylesheet" href="/assets/css/common.css">
   <style>
+    :root { --brand: #FF6B00; --brand-dark: #e85f00; --brand-light: #fff3eb; }
+    body { background: #fff8f3; }
+    .page-header {
+      background: linear-gradient(135deg, #FF6B00 0%, #ff8c38 100%);
+      color: #fff; padding: 24px 16px 20px; text-align: center;
+      position: relative; overflow: hidden; margin-bottom: 16px;
+    }
+    .page-header h1 { font-size: 22px; font-weight: 800; position: relative; z-index: 1; }
+    .page-header .subtitle { font-size: 13px; opacity: 0.95; margin-top: 4px; position: relative; z-index: 1; }
+    .page-header .ball { position: absolute; font-size: 120px; opacity: 0.15; right: -20px; top: -20px; transform: rotate(-15deg); }
     .notice-section {
-      background: #fff;
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      margin-bottom: 16px;
+      background: #fff; border-radius: var(--radius);
+      padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
     }
     .notice-section h2 {
-      font-size: 16px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-size: 16px; font-weight: 800; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px; color: var(--brand-dark);
+      padding-bottom: 10px; border-bottom: 2px solid var(--brand-light);
     }
-    .notice-section ul {
-      list-style: none;
-      padding: 0;
-    }
+    .notice-section ul { list-style: none; padding: 0; }
     .notice-section li {
-      padding: 8px 0;
-      font-size: 14px;
+      padding: 8px 0; font-size: 14px;
       border-bottom: 1px solid var(--gray-100);
-      display: flex;
-      gap: 8px;
+      display: flex; gap: 8px;
     }
     .notice-section li:last-child { border-bottom: none; }
-    .notice-section li .bullet { flex-shrink: 0; }
-    .price-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--gray-100);
-      font-size: 14px;
+    .venue-subtitle {
+      font-size: 13px; font-weight: 700; color: var(--brand);
+      margin: 12px 0 6px; display: flex; align-items: center; gap: 6px;
     }
-    .price-row:last-child { border-bottom: none; }
-    .price-row .price { font-weight: 700; color: var(--orange); }
-    .time-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 8px 0;
-      font-size: 14px;
+    .venue-photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+    .venue-photos.two-col { grid-template-columns: repeat(2, 1fr); }
+    .venue-photo-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .venue-photo-item img {
+      width: 100%; aspect-ratio: 4/3; object-fit: cover;
+      border-radius: 8px; border: 2px solid var(--brand-light);
     }
-    .time-badge {
-      background: var(--orange);
-      color: #fff;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      white-space: nowrap;
+    .venue-photo-item span { font-size: 11px; color: #6b7280; text-align: center; line-height: 1.4; }
+    .time-group { margin-bottom: 14px; }
+    .time-group:last-child { margin-bottom: 0; }
+    .time-group-label { font-size: 13px; font-weight: 700; color: var(--brand-dark); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+    .time-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .time-chip { background: var(--brand-light); color: var(--brand-dark); border-radius: 999px; padding: 5px 14px; font-size: 13px; font-weight: 700; }
+    .time-duration { font-size: 12px; color: #9ca3af; margin-top: 10px; text-align: right; }
+    .note-list { list-style: none; padding: 0; counter-reset: note-counter; }
+    .note-list li {
+      counter-increment: note-counter; padding: 9px 0; font-size: 14px;
+      border-bottom: 1px solid var(--gray-100); display: flex; gap: 10px; align-items: flex-start;
     }
+    .note-list li:last-child { border-bottom: none; }
+    .note-list li::before {
+      content: counter(note-counter); flex-shrink: 0;
+      width: 22px; height: 22px; background: var(--brand); color: #fff;
+      border-radius: 50%; font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+    .faq-item { border-bottom: 1px solid var(--gray-100); }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-question {
+      width: 100%; background: none; border: none; padding: 13px 0;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px; font-weight: 600; color: var(--gray-800);
+      cursor: pointer; text-align: left; gap: 8px;
+    }
+    .faq-question .arrow { flex-shrink: 0; font-size: 12px; color: var(--brand); transition: transform 0.25s; }
+    .faq-question.open .arrow { transform: rotate(180deg); }
+    .faq-answer {
+      max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.2s;
+      font-size: 13px; color: #6b7280; line-height: 1.7; padding: 0 4px;
+    }
+    .faq-answer.open { max-height: 200px; padding-bottom: 12px; }
   </style>
 </head>
 <body>
   <header class="page-header">
+    <span class="ball">🏀</span>
     <h1>📋 上課須知</h1>
+    <div class="subtitle">上課前請詳閱以下資訊</div>
   </header>
 
   <div class="container">
 
+    <!-- 上課地點 -->
     <div class="notice-section">
       <h2>📍 上課地點</h2>
       <ul>
-        <li>
-          <span class="bullet">🏀</span>
-          <span>上課場地依預約時段確認，詳細地址請在確認預約後詢問教練</span>
-        </li>
-        <li>
-          <span class="bullet">🚌</span>
-          <span>場地附近有公車站，交通便利</span>
-        </li>
+        <li><span>🗺️</span><span>雙北以內，以學生家長方便為主（室外）</span></li>
+        <li><span>📝</span><span>依家長及學生方便為主，彈性溝通</span></li>
       </ul>
-    </div>
 
-    <div class="notice-section">
-      <h2>⏰ 上課時段</h2>
-      <div class="time-row">
-        <span class="time-badge">早上</span>
-        <span>09:00 - 12:00（共 3 小時）</span>
-      </div>
-      <div class="time-row">
-        <span class="time-badge">下午</span>
-        <span>13:00 - 17:00（共 4 小時）</span>
-      </div>
-      <div class="time-row">
-        <span class="time-badge">晚上</span>
-        <span>18:00 - 21:00（共 3 小時）</span>
-      </div>
-    </div>
-
-    <div class="notice-section">
-      <h2>💰 課程費用</h2>
-      <div class="price-row">
-        <span>單堂體驗課</span>
-        <span class="price">請詢問教練</span>
-      </div>
-      <div class="price-row">
-        <span>月費方案（4 堂）</span>
-        <span class="price">請詢問教練</span>
-      </div>
-      <div class="price-row">
-        <span>月費方案（8 堂）</span>
-        <span class="price">請詢問教練</span>
-      </div>
-    </div>
-
-    <div class="notice-section">
-      <h2>📝 注意事項</h2>
+      <div class="venue-subtitle">🏢 室內場地</div>
       <ul>
-        <li><span class="bullet">1️⃣</span><span>請提前 <strong>10 分鐘</strong> 到達場地</span></li>
-        <li><span class="bullet">2️⃣</span><span>穿著<strong>舒適運動服裝</strong>及<strong>球鞋</strong>（禁止穿拖鞋上課）</span></li>
-        <li><span class="bullet">3️⃣</span><span>自備飲水，保持充足水分補給</span></li>
-        <li><span class="bullet">4️⃣</span><span>請<strong>勿空腹</strong>上課，課前 1 小時可適量進食</span></li>
-        <li><span class="bullet">5️⃣</span><span>如需取消課程，請提前 <strong>24 小時</strong> 透過 LINE 告知</span></li>
-        <li><span class="bullet">6️⃣</span><span>課程中如身體<strong>不適</strong>，請立即告知教練</span></li>
-        <li><span class="bullet">7️⃣</span><span>未滿 12 歲學員須由家長陪同</span></li>
+        <li><span>🏀</span><span>B•SHOOT 智能投籃基地</span></li>
+        <li><span>🏀</span><span>內湖運動中心 8 樓籃球場</span></li>
+      </ul>
+
+      <div class="venue-subtitle">🌳 室外場地</div>
+      <ul>
+        <li><span>🏀</span><span>主要以室外河濱球場、學校室外球場為主</span></li>
+      </ul>
+
+      <!-- B•SHOOT 兩張照片 -->
+      <div class="venue-photos two-col" style="margin-top:14px">
+        <div class="venue-photo-item">
+          <img id="venue-1" src="/assets/venues/bshoot-1.jpg" alt="B•SHOOT 投籃機與紅框籃板" loading="lazy">
+          <span>B•SHOOT 投籃機</span>
+        </div>
+        <div class="venue-photo-item">
+          <img id="venue-2" src="/assets/venues/bshoot-2.jpg" alt="B•SHOOT 基地 logo 牆" loading="lazy">
+          <span>B•SHOOT 基地</span>
+        </div>
+      </div>
+
+      <!-- 內湖運動中心一張照片 -->
+      <div class="venue-photos" style="grid-template-columns:1fr;margin-top:10px">
+        <div class="venue-photo-item">
+          <img id="venue-3" src="/assets/venues/neihu.jpg" alt="內湖運動中心 8 樓籃球場" loading="lazy">
+          <span>內湖運動中心 8 樓大球館</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 上課時段 -->
+    <div class="notice-section">
+      <h2>🕐 上課時段</h2>
+      <div class="time-group">
+        <div class="time-group-label">🌅 早上</div>
+        <div class="time-chips">
+          <span class="time-chip">09:00</span>
+          <span class="time-chip">10:00</span>
+          <span class="time-chip">11:00</span>
+        </div>
+      </div>
+      <div class="time-group">
+        <div class="time-group-label">☀️ 下午</div>
+        <div class="time-chips">
+          <span class="time-chip">13:00</span>
+          <span class="time-chip">14:00</span>
+          <span class="time-chip">15:00</span>
+          <span class="time-chip">16:00</span>
+        </div>
+      </div>
+      <div class="time-group">
+        <div class="time-group-label">🌙 晚上</div>
+        <div class="time-chips">
+          <span class="time-chip">18:00</span>
+          <span class="time-chip">19:00</span>
+          <span class="time-chip">20:00</span>
+        </div>
+      </div>
+      <div class="time-duration">每堂課 1 小時或 1.5 小時</div>
+    </div>
+
+    <!-- 課堂費用 -->
+    <div class="notice-section">
+      <h2>💰 課堂費用</h2>
+      <ul>
+        <li><span>🎯</span><span>單堂體驗課：<strong>600 元 / 小時</strong></span></li>
+        <li><span>🏀</span><span>單堂費用：<strong>800 元 / 小時</strong></span></li>
+        <li><span>👥</span><span>一對多教學：每人費用依上課人數調整，歡迎詢問教練</span></li>
       </ul>
     </div>
 
+    <!-- 注意事項 -->
+    <div class="notice-section">
+      <h2>📋 注意事項</h2>
+      <ol class="note-list">
+        <li>上課前如有身體不適或任何傷勢，記得提前通知喔！</li>
+        <li>學生須自備籃球，訓練輔助器材由教練準備</li>
+        <li>若需取消或改期，請提前 24 小時告知</li>
+      </ol>
+    </div>
+
+    <!-- 常見問題 -->
     <div class="notice-section">
       <h2>❓ 常見問題</h2>
-      <ul>
-        <li>
-          <span class="bullet">Q</span>
-          <span><strong>需要自備球嗎？</strong><br>教練會準備訓練用球，學員可自備個人球</span>
-        </li>
-        <li>
-          <span class="bullet">Q</span>
-          <span><strong>適合幾歲的學員？</strong><br>小學生至成人皆可，課程內容因年齡調整</span>
-        </li>
-        <li>
-          <span class="bullet">Q</span>
-          <span><strong>下雨天怎麼辦？</strong><br>視場地情況決定，若需取消會提前 LINE 通知</span>
-        </li>
-      </ul>
+      <div id="faqList"></div>
     </div>
 
-    <div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px">
-      如有其他問題，歡迎直接在 LINE 留言詢問 🏀
-    </div>
+    <div style="text-align:center;padding:16px;color:#9ca3af;font-size:13px">如有其他問題，歡迎直接在 LINE 留言詢問 🏀</div>
   </div>
+
+  <script>
+    const faqs = [
+      { q: '適合什麼年齡層？', a: '國小至高中生皆可，課程內容因年齡及程度客製化。' },
+      { q: '沒有籃球基礎可以上課嗎？', a: '完全沒問題！從零基礎到進階訓練都有課程規劃。' },
+      { q: '一堂課多長時間？', a: '每堂課 60 分鐘。' },
+      { q: '可以幾人一起上課？', a: '以一對一為主，可詢問小團體課程（2-3 人）安排。' },
+      { q: '上課地點如何決定？', a: '雙北以內配合學生家長地區，預約時可填入理想地點，再由教練確認。' },
+      { q: '如何預約課程？', a: '點選下方選單「預約課程」填寫表單，教練確認後會通知上課時間。' },
+      { q: '費用如何計算？', a: '請點選「上課須知／課程費用」查看最新收費資訊，或直接詢問教練。' },
+      { q: '取消或改期怎麼辦？', a: '請提前 24 小時透過 LINE 告知教練，逾時視同上課。' }
+    ];
+
+    const list = document.getElementById('faqList');
+    faqs.forEach((item, i) => {
+      list.insertAdjacentHTML('beforeend', `
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(${i}, this)"
+            aria-expanded="false" aria-controls="faq-${i}">
+            <span>Q：${item.q}</span><span class="arrow" aria-hidden="true">▼</span>
+          </button>
+          <div class="faq-answer" id="faq-${i}" role="region">A：${item.a}</div>
+        </div>
+      `);
+    });
+
+    function toggleFaq(i, btn) {
+      const ans = document.getElementById('faq-' + i);
+      const isOpen = ans.classList.contains('open');
+      document.querySelectorAll('.faq-answer').forEach(el => el.classList.remove('open'));
+      document.querySelectorAll('.faq-question').forEach(el => {
+        el.classList.remove('open');
+        el.setAttribute('aria-expanded', 'false');
+      });
+      if (!isOpen) {
+        ans.classList.add('open');
+        btn.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    }
+  </script>
 </body>
 </html>

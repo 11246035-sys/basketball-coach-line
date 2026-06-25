@@ -88,10 +88,18 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', requireAdmin, upload.array('photos', 5), async (req, res) => {
   try {
-    const { date, description, student_name, line_user_id, notify } = req.body;
+    const { date, description, student_name, notify } = req.body;
+    let line_user_id = req.body.line_user_id?.trim() || null;
 
     if (!date || !student_name) {
       return res.status(400).json({ error: '日期與學生姓名為必填' });
+    }
+
+    // 若未填 LINE ID，自動從 students 資料表查詢
+    if (!line_user_id && student_name) {
+      const { data: student } = await supabase.from('students')
+        .select('line_user_id').eq('name', student_name.trim()).maybeSingle();
+      if (student?.line_user_id) line_user_id = student.line_user_id;
     }
 
     // 建立課程紀錄
